@@ -3,36 +3,36 @@ title: "Introduction"
 description: "MediPro is a Laravel + Livewire web application for quoting, configuring, and generating 2D technical plans for aluminum windows and doors."
 ---
 
-MediPro is built for sales and fabrication teams who work with aluminum window and door systems. It replaces manual quoting spreadsheets and hand-drawn sketches with a structured configurator that calculates dimensions automatically, renders proportional 2D technical plans, and exports production-ready PDFs.
+MediPro is built for sales and fabrication teams who work with aluminum window and door systems. It replaces manual measurement spreadsheets and hand-drawn sketches with a structured configurator that calculates dimensions automatically, renders proportional 2D technical plans, and exports production-ready PDFs.
 
-The application is built on **Laravel 12** and **Livewire 4**, with **Tailwind CSS** for the interface and **Alpine.js** for lightweight client-side interactions. All dimension logic runs server-side, so the same data drives both the sales quote and the fabrication summary without duplication.
+The application is built on **Laravel 12** and **Livewire 4**, with **Tailwind CSS** for the interface and **Alpine.js** for lightweight client-side interactions. All dimension logic runs server-side, so the same data drives both the configuration view and the fabrication summary without duplication.
 
 ## Who it's for
 
-**Sales teams** use MediPro to configure window and door systems during customer consultations. They enter the opening dimensions, choose the aluminum system, and immediately see a priced quote with a 2D plan they can hand to the customer or export to PDF.
+**Sales teams** use MediPro to configure window and door systems during customer consultations. They enter the opening dimensions, choose the aluminum system, and immediately see a 2D plan they can hand to the customer or export to PDF.
 
 **Fabrication teams** use the same plan as a production reference. The fabrication summary table lists all adjusted cut dimensions, leaf counts, and included accessories — ready to read directly from the shop floor.
 
 ## Core capabilities
 
 <CardGroup cols={2}>
-  <Card title="Window systems" icon="layout-grid" href="/quickstart">
-    Configure Sistema Nova, Persiana, Doble Corrediza, Batiente, and Proyectante systems. Each system loads its own Livewire component and resets state cleanly on switch.
+  <Card title="Window systems" icon="layout-grid" href="/features/windows">
+    Configure aluminum window systems. Sistema Nova is fully implemented with sliding and fixed panel combinations, real-time 2D plan generation, and profile cut lists.
   </Card>
-  <Card title="Door types" icon="door-open" href="/quickstart">
+  <Card title="Door types" icon="door-open" href="/features/doors">
     Dedicated door configurator with its own 2D plan and fabrication summary, accessible at the `/Puerta` route.
   </Card>
-  <Card title="Automatic dimension calculations" icon="calculator" href="/quickstart">
+  <Card title="Automatic dimension calculations" icon="calculator" href="/configuration/dimensions">
     Enter the total width, total height, bridge/transom height, and leaf counts. All internal cut dimensions recalculate instantly on every change.
   </Card>
-  <Card title="2D technical plan generation" icon="drafting-compass" href="/quickstart">
+  <Card title="2D technical plan generation" icon="drafting-compass" href="/features/technical-plans">
     Proportional 2D plan rendered in the browser. Sliding leaves are labeled C, fixed leaves are labeled F, and all key dimensions are annotated on the drawing.
   </Card>
-  <Card title="Discount system" icon="tag" href="/quickstart">
-    Apply volume discounts, system-type discounts, and manual adjustments. Margin controls and role-based authorization are built into the discount flow.
+  <Card title="Fabrication summary" icon="table" href="/configuration/profiles">
+    Detailed cut list with aluminum profile codes, cut lengths, and quantities. Profile names resolved from an Excel catalog file.
   </Card>
-  <Card title="PDF export" icon="file-down" href="/quickstart">
-    Export the full technical plan, fabrication summary, final dimensions, and observations to PDF. Rendered from the live HTML view via `barryvdh/laravel-dompdf` or `spatie/browsershot`.
+  <Card title="PDF export" icon="file-down" href="/features/pdf-export">
+    Export the full technical plan and fabrication summary to PDF via the browser's native print dialog. No server-side renderer required.
   </Card>
 </CardGroup>
 
@@ -40,14 +40,14 @@ The application is built on **Laravel 12** and **Livewire 4**, with **Tailwind C
 
 | System | Status | Description |
 |---|---|---|
-| Sistema Nova | Fully implemented | The primary sliding window system. Supports configurable sliding and fixed leaf counts, bridge/transom height, and full 2D plan generation. |
-| Persiana | Implemented | Roller blind / shutter system. |
-| Doble Corrediza | Implemented | Double sliding system. |
-| Batiente | Implemented | Casement (swing-open) window system. |
-| Proyectante | Implemented | Projected (awning-style) window system. |
+| Sistema Nova | **Fully implemented** | The primary sliding window system. Supports configurable sliding and fixed leaf counts, bridge/transom height, and full 2D plan generation. |
+| Persiana | Coming soon | Roller blind / shutter system. |
+| Doble Corrediza | Coming soon | Double sliding system where both panels move. |
+| Batiente | Coming soon | Casement (swing-open) window system. |
+| Proyectante | Coming soon | Top-vent projected window system. |
 
 <Note>
-  **Sistema Nova** is the most fully developed window system and is the recommended starting point for exploring the configurator. It has the most complete 2D plan rendering and fabrication summary output. Other systems are implemented but may have a reduced feature set compared to Sistema Nova.
+  **Sistema Nova** is the only fully implemented window system. Selecting any other window type displays a "Coming soon" placeholder screen. See the [Window Systems](/systems/windows/sistema-nova) section for the full Sistema Nova reference.
 </Note>
 
 ## Technology stack

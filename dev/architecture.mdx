@@ -145,10 +145,12 @@ new class extends Component {
   Computed properties in Volt follow Laravel/Livewire's `getXxxProperty()` convention and are accessed as `$this->xxx` in PHP or `{{ $this->xxx }}` in Blade templates.
 </Note>
 
-## No database
+## Database usage
 
-MediPro has no database tables and no Eloquent models. All runtime state is stored in:
+MediPro includes the standard Laravel database setup (users, cache, and jobs tables) but the application itself does not use the database for configuration data. All window and door state is kept in:
 
-- **PHP session** — window/door snapshots, selected system type, print data
+- **PHP session** — window/door snapshots, selected system type, print data (session driver: `database` by default)
 - **Livewire public properties** — in-memory state for the current request/interaction cycle
 - **`public/datos.xlsx`** — the static aluminum profile catalog, read on component mount
+
+The `User` model and authentication scaffolding are present from the Laravel base installation but no login or user management flows are currently built in the application UI.

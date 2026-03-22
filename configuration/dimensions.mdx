@@ -94,7 +94,7 @@ When a transom exists (`altoSup > 0`), it is divided into 1, 2, or 3 equal panel
 
 ```php
 $c = $divisiones >= 5 ? 3 : ($divisiones >= 3 ? 2 : 1);
-$a = $ancho / $c;
+$a = $ancho / $c;  // uses raw $ancho, not anchoAjustado
 
 // Each transom panel:
 'ancho' => trunc($a) - 0.3,  // $sbancho = 0.3 cm deduction
@@ -123,7 +123,7 @@ Inputs: **Ancho = 205**, **Alto = 165**, **Puente = 130**, **1 corrediza + 2 fij
 | Sliding glass width | 68.666 − 0.6 | **68.0 cm** |
 | Fixed glass height | 130 − 1.0 | **129.0 cm** |
 | Sliding glass height | 130 − 3.5 | **126.5 cm** |
-| Transom panel width | trunc(206 / 3) − 0.3 = 68.6 − 0.3 | **68.3 cm** |
+| Transom panel width | trunc(205 / 2) − 0.3 = 102.5 − 0.3 | **102.2 cm** |
 | Transom panel height | trunc(32.9) | **32.9 cm** |
 | Transom count | 3 divisions → 2 panels | **2** |
 
