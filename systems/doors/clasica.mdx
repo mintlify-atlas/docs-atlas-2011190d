@@ -1,0 +1,166 @@
+---
+title: "Puerta Clásica"
+description: "Classic aluminum door with reinforced profiles and high durability"
+---
+
+The **Puerta Clásica** is a single-leaf hinged aluminum door with a two-panel glass layout separated by a central crossbar (travesaño). It supports an optional transom window (sobreluz) above the door leaf. All profile cuts and glass sizes are calculated automatically from the dimensions you enter.
+
+Livewire component: `puertas.normal`
+
+## Input fields
+
+| Field | Default | Description |
+|---|---|---|
+| **Ancho** (cm) | 90 | Total door width including frame |
+| **Alto** (cm) | 220 | Total door height including frame |
+| **Material** | Rectangular 60 – 7852 | Profile series for the frame |
+| **Con sobreluz** | Unchecked | Adds a fixed transom glazing panel above the leaf |
+| **Alto sobreluz** (cm) | 30 | Height of the transom panel (visible when sobreluz is enabled) |
+
+### Material options
+
+| Option | Code | Profile width used |
+|---|---|---|
+| Canal 60 | 7830 | 2.2 cm |
+| Rectangular 60 | 7852 | 2.5 cm |
+
+The selected material code is also used to label the frame profiles in the fabrication summary (e.g., `7852 - Lados`, `7852 - Arriba`).
+
+## Multi-door session
+
+The component supports configuring multiple doors in a single session. Each door is stored as a named tab (P - 1, P - 2, …). Use the toolbar to:
+
+- **Nuevo** — add a new door configuration
+- **Vaciar** — clear all doors from the session
+- Click a tab to switch between doors
+- Hover a tab and click the × button to delete that door
+
+Changes are persisted to the Laravel session automatically on every input update.
+
+## Calculation logic
+
+All measurements are in centimetres. The component runs `recalcular()` whenever `anchoTotal`, `altoTotal`, `material`, `conSobreluz`, or `altoSobreluz` changes.
+
+### Internal constants
+
+| Constant | Value (cm) | Purpose |
+|---|---|---|
+| `tubo` | 2.5 | Profile width for Rectangular 60 (7852) |
+| `canal` | 2.2 | Profile width for Canal 60 (7830) |
+| `cuadrado` | 3.8 | Corner square fitting width |
+| `paflon` | 8.2 | Central crossbar (travesaño) height |
+| `luzArriba` | 0.5 | Top clearance between leaf and frame |
+| `luzAbajo` | 1.0 | Bottom clearance between leaf and frame |
+| `luzLados` | 0.6 | Side clearance between leaf and frame |
+
+### Frame profiles (`calcularMarco`)
+
+Let `perfil` = profile width for the selected material.
+
+```
+{código} - Lados   → medida = altoTotal,           cantidad = 2
+{código} - Arriba  → medida = anchoTotal − perfil×2, cantidad = 1 (or 2 if conSobreluz)
+```
+
+### Leaf profiles (`calcularHoja`)
+
+```
+altoHoja  = altoTotal  (or altoTotal − altoSobreluz when conSobreluz is enabled)
+anchoHoja = anchoTotal − perfil×2 − luzLados
+
+5414 - Arriba y Abajo → medida = anchoHoja − cuadrado×2,                    cantidad = 2
+5414 - Lados          → medida = altoHoja − luzArriba − luzAbajo − perfil,  cantidad = 2
+5227 - Travesaño      → medida = anchoHoja − cuadrado×2,                    cantidad = 1
+```
+
+### Glass panels (`calcularVidrios`)
+
+The leaf is divided into two equal glass panels by the travesaño.
+
+```
+anchoVidrio = anchoTotal − perfil×2 − luzLados − cuadrado×2
+altoUtil    = altoHoja − luzArriba − luzAbajo − cuadrado×2 − paflon − perfil
+altoVidrio  = altoUtil / 2
+
+Vidrio → medida = (altoVidrio − 0.5) × (anchoVidrio − 0.5),  cantidad = 2
+```
+
+### Transom glass (`calcularSobreluz`)
+
+Only calculated when **Con sobreluz** is checked.
+
+```
+anchoSobreluz = anchoTotal − perfil×2
+altoVidrio    = altoSobreluz − perfil − 0.5
+
+Vidrio Sobreluz → medida = altoVidrio × (anchoSobreluz − 0.5),  cantidad = 1
+```
+
+### Accessories (`calcularAccesorios`)
+
+| Item | Spec | Quantity |
+|---|---|---|
+| Bisagras | 3×3 | 3 |
+| Chapas | Unidad | 1 |
+
+## Fabrication summary
+
+The right panel displays all calculated items in a table with three columns: **Perfil**, **Medida**, and **Cant.** Profile names are resolved against a product catalogue loaded from `datos.xlsx`; if a matching entry is found its full product name replaces the raw code.
+
+<Note>
+Glass dimensions (rows starting with `Vidrio`) are excluded from the accessories table and shown only in the technical drawing panel on the left.
+</Note>
+
+## Technical drawing
+
+A live schematic updates alongside the inputs. It shows:
+
+- Overall frame with ANCHO and ALTO dimension callouts
+- Transom zone (highlighted in sky blue) with its glass size when sobreluz is enabled
+- Upper and lower glass panels with their calculated sizes
+- The travesaño crossbar labelled REF 5227
+- Three hinge indicators on the left side of the frame
+
+## Worked example
+
+Configuration: **Ancho = 90 cm, Alto = 220 cm, Material = Rectangular 60 (7852), no sobreluz**
+
+`perfil = 2.5 cm`
+
+<Steps>
+  <Step title="Frame profiles">
+    ```
+    7852 - Lados  → 220 cm × 2
+    7852 - Arriba → 90 − 2.5×2 = 85 cm × 1
+    ```
+  </Step>
+  <Step title="Leaf dimensions">
+    ```
+    altoHoja  = 220 cm
+    anchoHoja = 90 − 2.5×2 − 0.6 = 84.4 cm
+    ```
+  </Step>
+  <Step title="Leaf profiles">
+    ```
+    5414 - Arriba y Abajo → 84.4 − 3.8×2 = 76.8 cm × 2
+    5414 - Lados          → 220 − 0.5 − 1.0 − 2.5 = 216 cm × 2
+    5227 - Travesaño      → 76.8 cm × 1
+    ```
+  </Step>
+  <Step title="Glass panels">
+    ```
+    anchoVidrio = 84.4 − 3.8×2 = 76.8 cm
+    altoUtil    = 220 − 0.5 − 1.0 − 3.8×2 − 8.2 − 2.5 = 200 cm
+    altoVidrio  = 200 / 2 = 100 cm
+
+    Vidrio → 99.50 × 76.30 cm × 2
+    ```
+  </Step>
+  <Step title="Accessories">
+    Bisagras 3×3 × 3, Chapas × 1
+  </Step>
+</Steps>
+
+## Printing
+
+Click **IMPRIMIR** in the toolbar to generate a print-ready PDF of all doors in the current session. The report is rendered in a hidden iframe and the browser print dialog opens automatically.

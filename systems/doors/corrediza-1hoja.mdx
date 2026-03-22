@@ -1,0 +1,58 @@
+---
+title: "Puerta Corrediza - 1 Hoja"
+description: "Single-leaf sliding door with linear guide system"
+---
+
+The **Puerta Corrediza - 1 Hoja** is a single-panel sliding door that travels along a top rail. The panel slides laterally to open, parking over the adjacent wall section.
+
+Livewire component: `puertas.corrediza1hoja`
+
+<Warning>
+This component is currently a visual prototype. It renders an animated sliding door demonstration but does not yet include dimension inputs, profile calculations, or a fabrication summary. Full calculation logic is under development.
+</Warning>
+
+## Current state
+
+The component renders an interactive schematic that illustrates how the single-leaf sliding door operates:
+
+- A top rail runs the full width of the frame
+- The left half of the frame represents the wall (muro) section where the door parks when open
+- The right half represents the opening (hueco)
+- The door leaf slides between the two positions when clicked
+
+### Interaction
+
+Click anywhere on the door leaf to toggle between **open** and **closed** states. The transition animates over 1200 ms with an ease-in-out curve.
+
+```
+Closed → leaf is positioned over the hueco (right half)
+Open   → leaf slides left and parks over the muro (left half)
+```
+
+## Door anatomy
+
+<CardGroup cols={2}>
+  <Card title="Top rail" icon="minus">
+    A continuous linear guide runs across the top of the frame. The door leaf hangs from rollers that travel along this rail.
+  </Card>
+  <Card title="Single leaf" icon="panel-left">
+    One movable panel covers the full height of the opening. It slides horizontally to open and close.
+  </Card>
+  <Card title="Muro zone" icon="wall">
+    The wall section beside the opening. The leaf parks here when the door is open, so the hueco is fully clear.
+  </Card>
+  <Card title="Hueco zone" icon="door-open">
+    The clear opening that the door covers when closed. Its width equals the leaf width.
+  </Card>
+</CardGroup>
+
+## Planned features
+
+When fully implemented, this component will include:
+
+- Dimension inputs for overall frame width and height
+- Rail profile calculations
+- Leaf frame profile cut list
+- Glass panel size output
+- Roller and guide hardware accessories list
+- Print-ready fabrication summary

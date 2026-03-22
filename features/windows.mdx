@@ -1,0 +1,93 @@
+---
+title: "Window Configuration"
+description: "Configure aluminum window systems with real-time 2D technical plan generation. Manage multiple windows in a single session using the Sistema Nova sliding window module."
+---
+
+The window module is available at `/Ventana`. It is powered by the `ventanas.app` Livewire component, which presents a selection grid of available window systems and then loads the appropriate sub-component once a system is chosen.
+
+## Selecting a system
+
+When you navigate to `/Ventana`, you are shown a grid of five window systems. Click any card to load that system's configuration interface.
+
+<CardGroup cols={2}>
+  <Card title="Sistema Nova" icon="star" href="/features/windows">
+    High-end aluminum system with reinforced profiles. Fully implemented — supports sliding and fixed panel combinations with real-time 2D plan generation.
+  </Card>
+  <Card title="Persiana" icon="bars">
+    Roller blind system for privacy control. Coming soon.
+  </Card>
+  <Card title="Doble Corrediza" icon="arrows-left-right">
+    Double sliding leaf system where both panels move. Coming soon.
+  </Card>
+  <Card title="Batiente" icon="door-open">
+    Traditional 90° swing-open system. Coming soon.
+  </Card>
+  <Card title="Proyectante" icon="up-right-from-square">
+    Top-vent system for controlled upper ventilation. Coming soon.
+  </Card>
+</CardGroup>
+
+<Note>
+  Only **Sistema Nova** is fully implemented. Selecting any other system displays a "Coming soon" screen. The selected system is stored in the session under the `sistemaSeleccionado` key so your choice persists across page reloads.
+</Note>
+
+To go back to the system selection grid, click the **Cambiar** button that appears in the header after a system has been chosen. This calls `resetear()`, which clears `sistemaSeleccionado` from both the component state and the session.
+
+## Multi-window management
+
+Sistema Nova supports working on multiple window configurations at once. Each configuration is called a *ventana* and is represented as a tab in the top navigation bar of the component.
+
+<Steps>
+  <Step title="Add a window">
+    Click the **Nuevo** button (plus icon) to append a new window tab. The new window inherits the current dimensions as its starting state and is automatically named `V - 2`, `V - 3`, and so on. A success toast notification confirms the addition.
+  </Step>
+  <Step title="Switch between windows">
+    Click any tab to switch to that window. The current window's state is snapshotted before switching so no data is lost. Each tab displays the window name and a close button (×) that appears on hover.
+  </Step>
+  <Step title="Delete a window">
+    Click the × button on a tab to remove that window. The minimum number of windows is one — the last remaining window cannot be deleted.
+  </Step>
+  <Step title="Clear all windows">
+    Click the **Vaciar** button (trash icon) to reset the entire session. This calls `confirmarImpresion()`, which clears the `datos_lote` and `ventanas` session keys and resets the component to a single default window.
+  </Step>
+</Steps>
+
+### Session persistence
+
+Every time any input field changes, the `updated()` lifecycle hook fires and writes the full `$ventanas` array to the session under the key `ventanas`. On component mount, the session is read back so configurations survive browser refreshes within the same session.
+
+```php
+// Triggered on every Livewire property update
+public function updated($propertyName)
+{
+    $this->guardarVentanaActual();
+    session()->put('ventanas', $this->ventanas);
+}
+```
+
+## Dimension input fields
+
+The Sistema Nova configuration form contains five inputs. All values are in centimeters.
+
+| Field | Livewire property | Default | Description |
+|---|---|---|---|
+| **Ancho** | `$ancho` | 205 | Total outer width of the window frame |
+| **Alto** | `$alto` | 165 | Total outer height of the window frame |
+| **Puente** | `$altoPuente` | 130 | Height of the lower panel section (bridge height), measured from the sill |
+| **Corredizas** | `$numCorredizas` | 1 | Number of sliding panels (1–3) |
+| **Fijos** | `$numFijos` | 2 | Number of fixed panels (1–3) |
+
+All inputs use `wire:model.blur`, meaning Livewire updates only when the field loses focus rather than on every keystroke. This prevents unnecessary re-renders while the user is typing.
+
+### Panel layout calculation
+
+The total number of panel divisions is `numCorredizas + numFijos`. The system determines the panel order automatically:
+
+- **1C + 2F (3 divisions):** Fixed, Sliding, Fixed — with a +1 cm width adjustment
+- **2C + 3F (5 divisions):** Fixed, Sliding, Fixed, Sliding, Fixed — with a +2 cm width adjustment
+- **3C + 3F (6 divisions):** Fixed, Sliding, Fixed, Sliding, Fixed, Sliding — with a +3 cm width adjustment
+- **Other combinations:** Fixed panels split left/right around the sliding panels
+
+### Adjusted width
+
+The fabrication summary displays an **Ancho Ajustado** (adjusted width) value alongside the raw input width. This adjusted figure accounts for the aluminum profile overlaps that occur in multi-panel configurations and is the measurement used when cutting horizontal profiles.

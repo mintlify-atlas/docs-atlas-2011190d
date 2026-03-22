@@ -1,97 +1,82 @@
 ---
-title: "Introduction"
-description: "Welcome to the new home for your documentation"
+title: "MediPro"
+description: "Professional aluminum window and door configuration system with real-time 2D technical plans and fabrication summaries."
 ---
 
-## Setting up
-
-Get your documentation site up and running in minutes.
-
-<Card
-  title="Start here"
-  icon="rocket"
-  href="/quickstart"
-  horizontal
->
-  Follow our three step quickstart guide.
-</Card>
-
-## Make it yours
-
-Design a docs site that looks great and empowers your users.
-
-<Columns cols={2}>
-  <Card
-    title="Edit locally"
-    icon="pen-to-square"
-    href="/development"
-  >
-    Edit your docs locally and preview them in real time.
+<CardGroup cols={2}>
+  <Card title="Quick Start" icon="rocket" href="/quickstart">
+    Get MediPro running in minutes with step-by-step setup instructions.
   </Card>
-  <Card
-    title="Customize your site"
-    icon="palette"
-    href="/essentials/settings"
-  >
-    Customize the design and colors of your site to match your brand.
+  <Card title="Window Configuration" icon="window-maximize" href="/features/windows">
+    Configure aluminum windows with dynamic measurement calculations.
   </Card>
-    <Card
-    title="Set up navigation"
-    icon="map"
-    href="/essentials/navigation"
-  >
-    Organize your docs to help users find what they need and succeed with your product.
+  <Card title="Door Configuration" icon="door-open" href="/features/doors">
+    Configure multiple door types with precise profile measurements.
   </Card>
-  <Card
-    title="API documentation"
-    icon="terminal"
-    href="/api-reference/introduction"
-  >
-    Auto-generate API documentation from OpenAPI specifications.
+  <Card title="Technical Plans" icon="drafting-compass" href="/features/technical-plans">
+    Generate proportional 2D technical plans for production and sales.
   </Card>
-</Columns>
+</CardGroup>
 
-## Create beautiful pages
+## What is MediPro?
 
-Everything you need to create world-class documentation.
+MediPro is a web application built with **Laravel + Livewire** for quoting, configuring, and generating technical 2D plans for aluminum windows and doors. It bridges the gap between sales and fabrication teams by providing a single source of truth for measurements, profiles, and production data.
 
-<Columns cols={2}>
-  <Card
-    title="Write with MDX"
-    icon="pen-fancy"
-    href="/essentials/markdown"
-  >
-    Use MDX to style your docs pages.
-  </Card>
-  <Card
-    title="Code samples"
-    icon="code"
-    href="/essentials/code"
-  >
-    Add sample code to demonstrate how to use your product.
-  </Card>
-  <Card
-    title="Images"
-    icon="image"
-    href="/essentials/images"
-  >
-    Display images and other media.
-  </Card>
-  <Card
-    title="Reusable snippets"
-    icon="recycle"
-    href="/essentials/reusable-snippets"
-  >
-    Write once and reuse across your docs.
-  </Card>
-</Columns>
+The system automatically calculates adjusted widths, bridge heights, glass dimensions, and required aluminum profiles based on user-entered dimensions — eliminating manual measurement errors.
 
-## Need inspiration?
+## Key capabilities
 
-<Card
-  title="See complete examples"
-  icon="stars"
-  href="https://mintlify.com/customers"
->
-  Browse our showcase of exceptional documentation sites.
-</Card>
+<CardGroup cols={3}>
+  <Card title="5 Window Systems" icon="border-all">
+    Sistema Nova, Persiana, Doble Corrediza, Batiente, and Proyectante.
+  </Card>
+  <Card title="5 Door Types" icon="border-outer">
+    Clásica, Personalizable, Corrediza 1 hoja, Corrediza 2 hojas, and 2 hojas abatible.
+  </Card>
+  <Card title="Auto Calculations" icon="calculator">
+    Automatic adjusted width, glass dimensions, and profile quantity calculations.
+  </Card>
+  <Card title="2D Technical Plans" icon="map">
+    Real-time proportional visualizations with labeled sections and dimensions.
+  </Card>
+  <Card title="PDF Export" icon="file-pdf">
+    Print-ready technical plans and fabrication summaries in one click.
+  </Card>
+  <Card title="Profile Catalog" icon="table">
+    Excel-based catalog integration for automatic profile name resolution.
+  </Card>
+</CardGroup>
+
+## System modules
+
+MediPro is organized into two primary configuration modules, accessible from the home screen:
+
+<CardGroup cols={2}>
+  <Card title="Ventana (Window)" icon="window-maximize" href="/features/windows">
+    Access the window configurator at `/Ventana`. Supports Sistema Nova (fully implemented) and four additional systems coming soon.
+  </Card>
+  <Card title="Puerta (Door)" icon="door-closed" href="/features/doors">
+    Access the door configurator at `/Puerta`. Supports Clásica, Personalizable, and Corrediza variants.
+  </Card>
+</CardGroup>
+
+## Get started
+
+<Steps>
+  <Step title="Install dependencies">
+    Run `composer install` and `npm install` to set up PHP and JavaScript dependencies.
+  </Step>
+  <Step title="Configure environment">
+    Copy `.env.example` to `.env` and run `php artisan key:generate`.
+  </Step>
+  <Step title="Run migrations">
+    Execute `php artisan migrate` to create the required database tables.
+  </Step>
+  <Step title="Start the server">
+    Run `php artisan serve` and navigate to `http://localhost:8000`.
+  </Step>
+</Steps>
+
+<Note>
+  MediPro requires PHP 8.2+, Composer, Node.js, and a database (SQLite works out of the box for development).
+</Note>

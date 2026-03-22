@@ -1,0 +1,194 @@
+---
+title: "Sistema Nova"
+description: "High-end aluminum window system with reinforced profiles"
+---
+
+Sistema Nova is the flagship window system in MediPro — the only fully implemented configuration engine. It handles mixed fixed/sliding panel layouts with automatic profile calculations, glass measurements, and accessory counts derived from a single set of dimension inputs.
+
+The Livewire component is `ventanas.sistema-nova`.
+
+## Inputs
+
+<CardGroup cols={2}>
+  <Card title="Ancho (width)" icon="arrows-left-right">
+    Total external width in centimeters. Default: **205 cm**.
+  </Card>
+  <Card title="Alto (height)" icon="arrows-up-down">
+    Total external height in centimeters. Default: **165 cm**.
+  </Card>
+  <Card title="Puente (bridge height)" icon="ruler-vertical">
+    Height of the lower sliding/fixed panel section. Default: **130 cm**.
+  </Card>
+  <Card title="Corredizas" icon="table-columns">
+    Number of sliding panels. Range: **1–3**. Default: **1**.
+  </Card>
+  <Card title="Fijos" icon="lock">
+    Number of fixed panels. Range: **1–3**. Default: **2**.
+  </Card>
+</CardGroup>
+
+## Automatic calculation logic
+
+### Adjusted width (`anchoAjustado`)
+
+The total width is adjusted upward depending on the number of divisions (corredizas + fijos) to compensate for overlapping profile tolerances:
+
+| Total divisions | Adjustment |
+|---|---|
+| 3 | +1 cm |
+| 5 | +2 cm |
+| 6 | +3 cm |
+| Any other | +0 cm (no adjustment) |
+
+### Section heights
+
+| Property | Formula |
+|---|---|
+| `altoInf` (lower section) | = `altoPuente` |
+| `altoSup` (transom section) | = `alto` − `altoPuente` − 2.1 cm |
+
+The 2.1 cm subtracted from `altoSup` is the fixed sobreluz (transom) offset. If the result is ≤ 0, no transom is rendered.
+
+### Glass dimensions per panel
+
+All panels share the same base width, then receive a ±0.6 cm glass tolerance adjustment:
+
+| Panel type | Width | Height |
+|---|---|---|
+| Fijo (fixed) | `anchoAjustado / totalDivisions` **+ 0.6 cm** | `altoPuente` − 1.0 cm |
+| Corrediza (sliding) | `anchoAjustado / totalDivisions` **− 0.6 cm** | `altoPuente` − 3.5 cm |
+
+<Note>
+All measurements are truncated to 1 decimal place, not rounded.
+</Note>
+
+## Panel arrangement
+
+The sequence of Fijo and Corrediza blocks is fixed for 5 and 6 divisions. For all other combinations the fixed panels are split evenly left and right around the sliding panels:
+
+| Divisions | Arrangement |
+|---|---|
+| 3 | Fijo — Corrediza — Fijo |
+| 5 | Fijo — Corrediza — Fijo — Corrediza — Fijo |
+| 6 | Fijo — Corrediza — Fijo — Corrediza — Fijo — Corrediza |
+| Other | `⌊fijos/2⌋` Fijos · all Corredizas · remaining Fijos |
+
+## Transom panels (sobreluz)
+
+A transom row appears above the main panel row only when `altoSup > 0`. The number of transom subdivisions scales with the total number of lower divisions:
+
+| Lower divisions | Transom panels | Labels |
+|---|---|---|
+| ≤ 2 | 1 | TL |
+| 3–4 | 2 | TL 1, TL 2 |
+| ≥ 5 | 3 | TL 1, TL 2, TL 3 |
+
+Width per transom panel = `ancho / numTransomPanels` (truncated) − 0.3 cm.
+
+## Profile detail table
+
+All profiles are identified by their catalogue code. Lengths are calculated automatically from the window dimensions.
+
+| Profile name | Code | Quantity | Length |
+|---|---|---|---|
+| U 3/4 | 7955 | 1 | `ancho` |
+| T/M | 5283 | 1 | `ancho` |
+| RIEL L | 8413 | 1 | `ancho` |
+| U F | 3003 | 1 per fixed panel | Width of that fixed panel |
+| H | 8220 | 1 per sliding panel | Width of that sliding panel |
+| PF Fijo | 8115 | Calculated† | `altoPuente` − 0.3 cm |
+| PF Corrediza | 8115 | `numCorredizas × 2` | `altoPuente` − 2.0 cm |
+
+†PF Fijo quantity: each fixed panel counts as 1 vertical profile, except when a fixed panel is flanked by corredizas on both sides — in that case it counts as 2.
+
+## Accessories
+
+| Accessory | Quantity |
+|---|---|
+| Garruchas (rollers) | `numCorredizas × 2` |
+| Pestillos (locks) | `numCorredizas × 1` |
+| Topes (stoppers) | `numCorredizas × 2` |
+
+## Worked example
+
+**Inputs:** Ancho = 205 cm · Alto = 165 cm · Puente = 130 cm · Corredizas = 1 · Fijos = 2
+
+<Steps>
+  <Step title="Total divisions">
+    `1 + 2 = 3`
+  </Step>
+  <Step title="Adjusted width">
+    3 divisions → +1 cm → `anchoAjustado = 206 cm`
+  </Step>
+  <Step title="Panel arrangement">
+    3 divisions → **Fijo — Corrediza — Fijo**
+  </Step>
+  <Step title="Base width per panel">
+    `206 / 3 = 68.6 cm`
+  </Step>
+  <Step title="Glass dimensions">
+    | Panel | Type | Glass width | Glass height |
+    |---|---|---|---|
+    | F1 | Fijo | 68.6 + 0.6 = **69.2 cm** | 130 − 1.0 = **129.0 cm** |
+    | C1 | Corrediza | 68.6 − 0.6 = **68.0 cm** | 130 − 3.5 = **126.5 cm** |
+    | F2 | Fijo | 68.6 + 0.6 = **69.2 cm** | 130 − 1.0 = **129.0 cm** |
+  </Step>
+  <Step title="Transom (sobreluz)">
+    `altoSup = 165 − 130 − 2.1 = 32.9 cm`
+
+    3 divisions → **2 transom panels**: TL 1 and TL 2
+
+    Width per transom panel = `⌊205/2⌋ − 0.3 = 102.0 − 0.3 = 101.7 cm`
+  </Step>
+  <Step title="Profiles">
+    | Profile | Code | Qty | Length |
+    |---|---|---|---|
+    | U 3/4 | 7955 | 1 | 205 cm |
+    | T/M | 5283 | 1 | 205 cm |
+    | RIEL L | 8413 | 1 | 205 cm |
+    | U F (69.2) | 3003 | 2 | 69.2 cm |
+    | H (68.0) | 8220 | 1 | 68.0 cm |
+    | PF Fijo | 8115 | 2 | 129.7 cm |
+    | PF Corrediza | 8115 | 2 | 128.0 cm |
+  </Step>
+  <Step title="Accessories">
+    Garruchas: 2 · Pestillos: 1 · Topes: 2
+  </Step>
+</Steps>
+
+## Multi-window batch
+
+Sistema Nova supports configuring and printing multiple windows in a single session.
+
+<Steps>
+  <Step title="Add a new window">
+    Click the **Nuevo** button in the tab bar. A new tab labeled `V - 2`, `V - 3`, etc. appears and becomes active. The new window inherits the current window's dimensions as a starting point.
+  </Step>
+  <Step title="Switch between windows">
+    Click any tab in the tab bar to switch to that window. The current window's state is saved automatically before switching.
+  </Step>
+  <Step title="Delete a window">
+    Hover over a tab to reveal the red × button in the top-right corner. Click it to delete that window. The last remaining window cannot be deleted.
+  </Step>
+  <Step title="Print all windows">
+    Click the **IMPRIMIR** button on the right side of the tab bar. All configured windows are compiled into a single print layout and the browser print dialog opens automatically.
+  </Step>
+  <Step title="Clear session">
+    Click **Vaciar** to discard all windows and reset to a single empty window. Session storage is also cleared.
+  </Step>
+</Steps>
+
+<Tip>
+Window state is persisted in the PHP session automatically on every input change. Refreshing the page restores all tabs and their configurations.
+</Tip>
+
+## Visual plan (plano técnico)
+
+The component renders a live 2D plan of the window directly in the browser. Panel colors indicate type:
+
+| Color | Meaning |
+|---|---|
+| Dark / black border | Aluminum profiles |
+| Light blue (sky-50) | Fixed glass panels |
+| Medium blue (sky-200) | Sliding glass panels |
+| Yellow stripe at bottom of sliding panel | Roller track indicator |

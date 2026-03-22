@@ -1,0 +1,98 @@
+---
+title: "Technical 2D Plans"
+description: "Real-time browser-rendered 2D technical plans that update instantly as you enter dimensions. Understand the plan layout, color coding, dimension indicators, and how to print all windows in a batch."
+---
+
+MediPro generates a 2D technical plan directly inside the Livewire component as you type. There is no separate rendering step — the plan reacts to every dimension change in real time because it is built from computed Blade template expressions bound to Livewire's reactive state.
+
+## Plan structure
+
+The plan is divided into two vertical sections stacked inside a dark outer frame:
+
+### Upper section — sobreluz (transom)
+
+The transom section appears only when the total window height (`alto`) is greater than the bridge height (`altoPuente`) plus the fixed 2.1 cm sobreluz offset. When visible, it is subdivided into 1, 2, or 3 equal-width panes depending on the total number of lower panel divisions:
+
+| Lower divisions | Transom panes |
+|---|---|
+| 1–2 | 1 pane (label: `TL`) |
+| 3–4 | 2 panes (labels: `TL 1`, `TL 2`) |
+| 5–6 | 3 panes (labels: `TL 1`, `TL 2`, `TL 3`) |
+
+Each transom pane shows its computed glass dimensions (`ancho x alto` in cm) inside the pane area.
+
+### Lower section — main panels
+
+The lower section contains the sliding and fixed panel layout. Each panel block renders according to its type:
+
+| Panel type | Background color | Badge color | Label format |
+|---|---|---|---|
+| Corrediza (sliding) | `bg-sky-200` (blue) | Yellow (`bg-yellow-400`) | `C1`, `C2`, `C3` |
+| Fijo (fixed) | `bg-sky-50` (light blue) | Green (`bg-green-600`) | `F1`, `F2`, `F3` |
+
+Transom panes use `bg-sky-100` (sky blue) to visually distinguish them from main panels.
+
+Sliding panels also render a thin black bar at the bottom of the pane to represent the roller track.
+
+## Dimension indicators
+
+Three dimension arrows surround the plan:
+
+- **Left arrow (blue, full height):** Total window height (`alto` cm)
+- **Right arrow (amber, lower section only):** Bridge height / alto puente (`altoPuente` cm), aligned to the bottom of the frame
+- **Bottom arrow (slate, full width):** Total window width (`ancho` cm)
+
+All arrows are proportionally positioned using inline `style` height/width percentages calculated from the actual entered dimensions, so the plan always reflects the true proportions of the window.
+
+## Legend
+
+Below the plan a **Mapeo de Componentes** (component map) legend identifies each visual element:
+
+| Swatch | Label | Description |
+|---|---|---|
+| Dark gray (`bg-gray-900`) | **Perfiles** | Aluminum frame profiles |
+| Green (`bg-green-600`) | **Fijos** | Fixed panel structure |
+| Sky blue (`bg-sky-300`) | **Vidrios** | Glass panes |
+| Yellow (`bg-yellow-400`) | **Corredizas** | Sliding mobile panels |
+
+## Fabrication summary
+
+Directly below the plan, a **Resumen detallado** section shows four metric cards (adjusted width, bridge height, latches, and rollers) and a detailed materials table. The table lists every aluminum profile and accessory required for the configured window, identified by their catalog code, with cut lengths and quantities.
+
+The catalog codes are matched against the `datos.xlsx` file loaded from `public/datos.xlsx` at component mount. If the file is present, the full product name from the spreadsheet is shown alongside the internal code.
+
+## Batch printing
+
+The **IMPRIMIR** button in the top-right of the window module triggers `imprimirTodo()`, which:
+
+<Steps>
+  <Step title="Snapshot all windows">
+    Iterates over every window in `$ventanas` and calculates the full panel layout, transom, adjusted width, and materials detail for each one without mutating the live component state.
+  </Step>
+  <Step title="Save to session">
+    Writes the complete array of window data to the session under the key `datos_lote` and calls `session()->save()` to flush it immediately.
+  </Step>
+  <Step title="Dispatch browser event">
+    Dispatches the `disparar-impresion-total` browser event, which is picked up by an inline JavaScript listener on the page.
+  </Step>
+  <Step title="Load the print iframe">
+    The JavaScript listener sets the `src` of a hidden `<iframe>` to the `plano.imprimir` route (`/plano-imprimir`). Once the iframe finishes loading, a 600 ms timeout fires `iframe.contentWindow.print()` to open the browser print dialog.
+  </Step>
+</Steps>
+
+```javascript
+// Inline script in sistema-nova.blade.php
+window.addEventListener('disparar-impresion-total', () => {
+    const iframe = document.getElementById('iframeLote');
+    iframe.src = iframe.dataset.url;
+
+    iframe.onload = function () {
+        setTimeout(() => {
+            iframe.contentWindow.focus();
+            iframe.contentWindow.print();
+        }, 600);
+    };
+});
+```
+
+The 600 ms delay ensures Tailwind CSS (loaded via CDN inside the iframe) has finished rendering before the print dialog opens.

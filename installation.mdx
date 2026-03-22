@@ -1,0 +1,216 @@
+---
+title: "Installation"
+description: "Full installation instructions for MediPro, including system requirements, environment configuration, and production build steps."
+---
+
+## System requirements
+
+| Requirement | Minimum version |
+|---|---|
+| PHP | ^8.2 |
+| Composer | 2.x |
+| Node.js | 18.x or later |
+| npm | 9.x or later |
+
+### Supported databases
+
+| Database | Notes |
+|---|---|
+| **SQLite** | Default. No separate server required. The database file lives at `database/database.sqlite`. Recommended for local development. |
+| **MySQL** | Supported. Set `DB_CONNECTION=mysql` and provide host, port, database name, and credentials in `.env`. |
+| **PostgreSQL** | Supported. Set `DB_CONNECTION=pgsql` and provide the corresponding connection values. |
+
+<Warning>
+  MediPro uses `spatie/browsershot` for server-side PDF generation. Browsershot requires a working **Node.js and Puppeteer environment** on the server. On production hosts without a headless Chrome/Chromium binary available, you must install Puppeteer (`npm install puppeteer`) and ensure the binary path is accessible to PHP. Without this, server-side PDF exports will fail. HTML-based PDF export via `barryvdh/laravel-dompdf` does not have this requirement.
+</Warning>
+
+## Installation steps
+
+<Steps>
+  <Step title="Clone the repository">
+    ```bash
+    git clone <your-repository-url> medipro
+    cd medipro
+    ```
+  </Step>
+
+  <Step title="Install PHP dependencies">
+    ```bash
+    composer install
+    ```
+
+    This installs all packages listed in `composer.json`, including Laravel 12, Livewire 4, laravel-dompdf, maatwebsite/excel, and spatie/browsershot.
+  </Step>
+
+  <Step title="Install Node.js dependencies">
+    ```bash
+    npm install
+    ```
+  </Step>
+
+  <Step title="Create and configure the environment file">
+    ```bash
+    cp .env.example .env
+    php artisan key:generate
+    ```
+
+    The `.env.example` ships with sensible defaults for local development:
+
+    ```ini
+    APP_NAME=Laravel
+    APP_ENV=local
+    APP_KEY=
+    APP_DEBUG=true
+    APP_URL=http://localhost
+
+    APP_LOCALE=en
+    APP_FALLBACK_LOCALE=en
+    APP_FAKER_LOCALE=en_US
+
+    LOG_CHANNEL=stack
+    LOG_STACK=single
+    LOG_LEVEL=debug
+
+    DB_CONNECTION=sqlite
+    # DB_HOST=127.0.0.1
+    # DB_PORT=3306
+    # DB_DATABASE=laravel
+    # DB_USERNAME=root
+    # DB_PASSWORD=
+
+    SESSION_DRIVER=database
+    SESSION_LIFETIME=120
+
+    QUEUE_CONNECTION=database
+    CACHE_STORE=database
+    ```
+
+    To use **MySQL** instead of SQLite, uncomment and set the `DB_*` variables and change `DB_CONNECTION` to `mysql`.
+
+    To use **PostgreSQL**, set `DB_CONNECTION=pgsql` and provide the corresponding `DB_HOST`, `DB_PORT`, `DB_DATABASE`, `DB_USERNAME`, and `DB_PASSWORD` values.
+  </Step>
+
+  <Step title="Run database migrations">
+    ```bash
+    php artisan migrate
+    ```
+
+    For SQLite, the database file is created automatically at `database/database.sqlite` if it does not exist. For MySQL or PostgreSQL, create the database first, then run the migration command.
+  </Step>
+
+  <Step title="Build frontend assets">
+    For development (with hot module replacement):
+
+    ```bash
+    npm run dev
+    ```
+
+    For production:
+
+    ```bash
+    npm run build
+    ```
+  </Step>
+
+  <Step title="Start the application">
+    ```bash
+    php artisan serve
+    ```
+
+    The application is now available at [http://localhost:8000](http://localhost:8000).
+  </Step>
+</Steps>
+
+## One-shot setup script
+
+The `composer setup` script automates the full installation sequence:
+
+```json
+"setup": [
+    "composer install",
+    "@php -r \"file_exists('.env') || copy('.env.example', '.env');\"",
+    "@php artisan key:generate",
+    "@php artisan migrate --force",
+    "npm install",
+    "npm run build"
+]
+```
+
+Run it with:
+
+```bash
+composer setup
+```
+
+This is the recommended approach for setting up a fresh clone. It copies `.env.example` to `.env` only if `.env` does not already exist, so it is safe to run on an existing installation.
+
+## Development server script
+
+The `composer dev` script starts all development services concurrently in a single terminal using `npx concurrently`:
+
+```json
+"dev": [
+    "Composer\\Config::disableProcessTimeout",
+    "npx concurrently -c \"#93c5fd,#c4b5fd,#fb7185,#fdba74\" \"php artisan serve\" \"php artisan queue:listen --tries=1\" \"php artisan pail --timeout=0\" \"npm run dev\" --names=server,queue,logs,vite --kill-others"
+]
+```
+
+Run it with:
+
+```bash
+composer dev
+```
+
+This starts four processes:
+
+| Process | Command | Purpose |
+|---|---|---|
+| `server` | `php artisan serve` | Laravel HTTP server |
+| `queue` | `php artisan queue:listen --tries=1` | Background job processing |
+| `logs` | `php artisan pail --timeout=0` | Real-time log output (Laravel Pail) |
+| `vite` | `npm run dev` | Vite asset server with HMR |
+
+All processes are color-coded in the terminal output and shut down together when you press `Ctrl+C`.
+
+## Production deployment
+
+For production, build frontend assets ahead of time and do not run Vite in dev mode:
+
+```bash
+npm run build
+```
+
+Set the following values in your production `.env`:
+
+```ini
+APP_ENV=production
+APP_DEBUG=false
+APP_URL=https://your-domain.com
+```
+
+Then optimize the Laravel application:
+
+```bash
+php artisan config:cache
+php artisan route:cache
+php artisan view:cache
+```
+
+<Warning>
+  Never set `APP_DEBUG=true` in production. Debug mode exposes stack traces and environment variables in error responses.
+</Warning>
+
+## Running tests
+
+```bash
+composer test
+```
+
+This clears the config cache and runs the PHPUnit test suite:
+
+```json
+"test": [
+    "@php artisan config:clear --ansi",
+    "@php artisan test"
+]
+```

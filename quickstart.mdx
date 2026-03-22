@@ -1,80 +1,122 @@
 ---
 title: "Quickstart"
-description: "Start building awesome documentation in minutes"
+description: "Go from zero to a working window configuration with a 2D technical plan in under five minutes."
 ---
 
-## Get started in three steps
+This guide gets MediPro running locally and walks you through creating your first window configuration end to end.
 
-Get your documentation site running locally and make your first customization.
+<Tip>
+  The fastest path is the `composer setup` script. It runs `composer install`, copies `.env.example` to `.env`, generates the application key, runs migrations, installs npm dependencies, and builds frontend assets — all in one command. See step 4 for details.
+</Tip>
 
-### Step 1: Set up your local environment
+<Steps>
+  <Step title="Clone or download the repository">
+    ```bash
+    git clone <your-repository-url> medipro
+    cd medipro
+    ```
 
-<AccordionGroup>
-  <Accordion icon="copy" title="Clone your docs locally">
-    During the onboarding process, you created a GitHub repository with your docs content if you didn't already have one. You can find a link to this repository in your [dashboard](https://dashboard.mintlify.com).
-    
-    To clone the repository locally so that you can make and preview changes to your docs, follow the [Cloning a repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) guide in the GitHub docs.
-  </Accordion>
-  <Accordion icon="rectangle-terminal" title="Start the preview server">
-    1. Install the Mintlify CLI: `npm i -g mint`
-    2. Navigate to your docs directory and run: `mint dev`
-    3. Open `http://localhost:3000` to see your docs live!
-    
-    <Tip>Your preview updates automatically as you edit files.</Tip>
-  </Accordion>
-</AccordionGroup>
+    If you received a zip archive, extract it and navigate into the project directory.
+  </Step>
 
-### Step 2: Deploy your changes
+  <Step title="Install PHP dependencies">
+    <CodeGroup>
 
-<AccordionGroup>
-  <Accordion icon="github" title="Install our GitHub app">
-    Install the Mintlify GitHub app from your [dashboard](https://dashboard.mintlify.com/settings/organization/github-app).
-    
-    Our GitHub app automatically deploys your changes to your docs site, so you don't need to manage deployments yourself.
-</Accordion>
-<Accordion icon="palette" title="Update your site name and colors">
-    For a first change, let's update the name and colors of your docs site.
+    ```bash composer
+    composer install
+    ```
 
-    1. Open `docs.json` in your editor.
-    2. Change the `"name"` field to your project name.
-    3. Update the `"colors"` to match your brand.
-    4. Save and see your changes instantly at `http://localhost:3000`.
+    ```bash composer (one-shot setup)
+    composer setup
+    ```
 
-    <Tip>Try changing the primary color to see an immediate difference!</Tip>
-  </Accordion>
-</AccordionGroup>
+    </CodeGroup>
 
-### Step 3: Go live
+    If you use `composer setup`, it handles steps 2 through 5 automatically — installing Composer dependencies, copying `.env`, generating the app key, running migrations, installing npm packages, and building frontend assets. Skip ahead to step 6 if you use it.
+  </Step>
 
-<Accordion icon="rocket" title="Publish your docs">
-  1. Commit and push your changes.
-  2. Your docs will update and be live in moments!
-</Accordion>
+  <Step title="Install Node.js dependencies">
+    ```bash
+    npm install
+    ```
+  </Step>
 
-## Next steps
+  <Step title="Configure the environment">
+    Copy the example environment file and generate your application key:
 
-Now that you have your docs running, explore these key features:
+    ```bash
+    cp .env.example .env
+    php artisan key:generate
+    ```
 
-<CardGroup cols={2}>
+    The default configuration uses SQLite, so no database credentials are needed for a local setup.
+  </Step>
 
-<Card title="Write Content" icon="pen-to-square" href="/essentials/markdown">
-  Learn MDX syntax and start writing your documentation.
-</Card>
+  <Step title="Run database migrations">
+    ```bash
+    php artisan migrate
+    ```
 
-<Card title="Customize style" icon="palette" href="/essentials/settings">
-  Make your docs match your brand perfectly.
-</Card>
+    This creates all required tables in the SQLite database file at `database/database.sqlite`.
+  </Step>
 
-<Card title="Add code examples" icon="square-code" href="/essentials/code">
-  Include syntax-highlighted code blocks.
-</Card>
+  <Step title="Start the development servers">
+    Open two terminal windows and run one command in each:
 
-<Card title="API documentation" icon="code" href="/api-reference/introduction">
-  Auto-generate API docs from OpenAPI specs.
-</Card>
+    <CodeGroup>
 
-</CardGroup>
+    ```bash Terminal 1 — Vite asset server
+    npm run dev
+    ```
 
-<Note>
-  **Need help?** See our [full documentation](https://mintlify.com/docs) or join our [community](https://mintlify.com/community).
-</Note>
+    ```bash Terminal 2 — Laravel application server
+    php artisan serve
+    ```
+
+    </CodeGroup>
+
+    Alternatively, use the `composer dev` script to start all services (Laravel, queue worker, log watcher, and Vite) concurrently in a single terminal:
+
+    ```bash
+    composer dev
+    ```
+  </Step>
+
+  <Step title="Open the application">
+    Navigate to [http://localhost:8000](http://localhost:8000) in your browser. You should see the MediPro welcome page.
+  </Step>
+
+  <Step title="Open the window configurator">
+    Click the **Ventana** button, or navigate directly to:
+
+    ```
+    http://localhost:8000/Ventana
+    ```
+
+    This loads the window configuration view backed by the Sistema Nova Livewire component.
+  </Step>
+
+  <Step title="Enter dimensions and configure the system">
+    Fill in the dimension fields with an example configuration:
+
+    | Field | Example value |
+    |---|---|
+    | Ancho (total width) | `205` cm |
+    | Alto (total height) | `165` cm |
+    | Puente / Sobreluz (bridge height) | `130` cm |
+
+    Adjust the number of sliding leaves (hojas corredizas) and fixed leaves (hojas fijas) as needed. All internal cut dimensions recalculate automatically on every change.
+  </Step>
+
+  <Step title="View the 2D plan and fabrication summary">
+    The proportional 2D technical plan renders immediately below the form. Sliding leaves are labeled **C** and fixed leaves are labeled **F**, with all key dimensions annotated.
+
+    The fabrication summary table beneath the plan lists all adjusted cut dimensions, leaf counts, and included accessories — ready to hand to the production team or export to PDF.
+  </Step>
+</Steps>
+
+## What's next
+
+- Read the [Installation](/installation) page for full system requirements, database options, and production deployment instructions.
+- Learn about the discount system and how to configure volume and manual discounts.
+- Explore the door configurator at `/Puerta`.

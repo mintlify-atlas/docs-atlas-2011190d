@@ -1,0 +1,206 @@
+---
+title: "Database"
+description: "Database setup, migrations, and schema overview"
+---
+
+MediPro is built on Laravel and supports SQLite, MySQL, and PostgreSQL. For local development, SQLite is the default and requires no additional server setup. The database is used primarily for Laravel's built-in infrastructure — authentication, cache, sessions, and queued jobs — rather than for storing window and door configuration data.
+
+<Note>
+Window and door configurations in MediPro are stored in the **PHP session**, not in the database. The database tables created by migrations support Laravel's core features: user authentication, cache storage, and the job queue. See [Session data](#session-data) below for the full list of session keys used by the configurator.
+</Note>
+
+## Supported databases
+
+<CardGroup cols={3}>
+  <Card title="SQLite" icon="database">
+    Default for local development. No server required — uses a single file at `database/database.sqlite`.
+  </Card>
+  <Card title="MySQL" icon="database">
+    Recommended for production deployments on shared hosting and traditional LAMP stacks.
+  </Card>
+  <Card title="PostgreSQL" icon="database">
+    Suitable for production deployments where PostgreSQL is the standard or preferred database.
+  </Card>
+</CardGroup>
+
+## Configuration
+
+Set the database connection in your `.env` file.
+
+<CodeGroup>
+
+```ini SQLite
+DB_CONNECTION=sqlite
+# No additional variables needed.
+# Laravel uses database/database.sqlite by default.
+```
+
+```ini MySQL
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=medipro
+DB_USERNAME=root
+DB_PASSWORD=secret
+```
+
+```ini PostgreSQL
+DB_CONNECTION=pgsql
+DB_HOST=127.0.0.1
+DB_PORT=5432
+DB_DATABASE=medipro
+DB_USERNAME=postgres
+DB_PASSWORD=secret
+```
+
+</CodeGroup>
+
+For SQLite, create the database file if it does not exist:
+
+```bash
+touch database/database.sqlite
+```
+
+## Migration commands
+
+```bash
+# Run all pending migrations
+php artisan migrate
+
+# Drop all tables and re-run every migration from scratch
+php artisan migrate:fresh
+
+# Show the status of each migration (run / pending)
+php artisan migrate:status
+```
+
+<Warning>
+`php artisan migrate:fresh` destroys all data in the database. Never run this against a production database.
+</Warning>
+
+## Migrations overview
+
+MediPro ships with three migration files. All are standard Laravel scaffolding.
+
+### `0001_01_01_000000_create_users_table`
+
+Creates three tables for authentication and session management.
+
+**`users`**
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | bigint, PK | Auto-incrementing primary key |
+| `name` | varchar | User's display name |
+| `email` | varchar, unique | User's email address |
+| `email_verified_at` | timestamp, nullable | When the email address was verified |
+| `password` | varchar | Bcrypt-hashed password |
+| `remember_token` | varchar, nullable | Token for "remember me" sessions |
+| `created_at` | timestamp | — |
+| `updated_at` | timestamp | — |
+
+**`password_reset_tokens`**
+
+| Column | Type | Notes |
+|---|---|---|
+| `email` | varchar, PK | The address the reset was requested for |
+| `token` | varchar | Hashed reset token |
+| `created_at` | timestamp, nullable | When the token was issued |
+
+**`sessions`**
+
+Used when `SESSION_DRIVER=database`. Stores all active session payloads.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | varchar, PK | Session identifier |
+| `user_id` | bigint, nullable, indexed | Associated user (if authenticated) |
+| `ip_address` | varchar(45), nullable | Client IP address |
+| `user_agent` | text, nullable | Client user-agent string |
+| `payload` | longtext | Serialised session data (includes all MediPro configurator state) |
+| `last_activity` | integer, indexed | Unix timestamp of the last request |
+
+### `0001_01_01_000001_create_cache_table`
+
+Creates two tables used when `CACHE_STORE=database`.
+
+**`cache`**
+
+| Column | Type | Notes |
+|---|---|---|
+| `key` | varchar, PK | Cache key |
+| `value` | mediumtext | Serialised cached value |
+| `expiration` | integer | Unix timestamp when the entry expires |
+
+**`cache_locks`**
+
+| Column | Type | Notes |
+|---|---|---|
+| `key` | varchar, PK | Lock identifier |
+| `owner` | varchar | Process that holds the lock |
+| `expiration` | integer | Unix timestamp when the lock expires |
+
+### `0001_01_01_000002_create_jobs_table`
+
+Creates three tables used when `QUEUE_CONNECTION=database`.
+
+**`jobs`**
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | bigint, PK | Auto-incrementing job ID |
+| `queue` | varchar, indexed | Queue name |
+| `payload` | longtext | Serialised job payload |
+| `attempts` | tinyint unsigned | Number of times the job has been attempted |
+| `reserved_at` | int unsigned, nullable | Unix timestamp when a worker claimed this job |
+| `available_at` | int unsigned | Unix timestamp when the job becomes available |
+| `created_at` | int unsigned | Unix timestamp when the job was dispatched |
+
+**`job_batches`**
+
+Supports Laravel's job batching feature.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | varchar, PK | Batch identifier |
+| `name` | varchar | Human-readable batch name |
+| `total_jobs` | integer | Total jobs in the batch |
+| `pending_jobs` | integer | Jobs not yet completed |
+| `failed_jobs` | integer | Jobs that have failed |
+| `failed_job_ids` | longtext | JSON array of failed job IDs |
+| `options` | mediumtext, nullable | Serialised batch options |
+| `cancelled_at` | integer, nullable | Unix timestamp if the batch was cancelled |
+| `created_at` | integer | Unix timestamp of batch creation |
+| `finished_at` | integer, nullable | Unix timestamp when all jobs completed |
+
+**`failed_jobs`**
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | bigint, PK | Auto-incrementing ID |
+| `uuid` | varchar, unique | Unique identifier for the failed job |
+| `connection` | text | Queue connection name |
+| `queue` | text | Queue name |
+| `payload` | longtext | Serialised job payload |
+| `exception` | longtext | Full exception trace |
+| `failed_at` | timestamp | When the failure occurred (defaults to now) |
+
+## Session data
+
+Because MediPro uses session-based state for all configurator data, no additional migrations are needed for window or door records. All configuration state is serialised into the `payload` column of the `sessions` table (or into the session file, depending on `SESSION_DRIVER`).
+
+The following session keys are used by the application:
+
+| Session key | Type | Description |
+|---|---|---|
+| `sistemaSeleccionado` | string | The selected window system type (e.g., sliding, casement) |
+| `ventanas` | array | Full array of all window configuration objects for the current batch |
+| `datos_lote` | array | Batch-level metadata used when generating the print view |
+| `PuertaSeleccionado` | string | The selected door type |
+| `puertas` | array | Door configuration data for the current batch |
+
+This design means that:
+
+- No application-specific schema changes are needed when updating MediPro.
+- Configurations are user-scoped and ephemeral by default (they last for the session lifetime defined by `SESSION_LIFETIME`).
+- Clearing or expiring a session resets the configurator state entirely.

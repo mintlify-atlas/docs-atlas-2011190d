@@ -1,0 +1,119 @@
+---
+title: "PDF Export"
+description: "Export window and door technical plans to PDF using the browser's built-in print dialog. Understand the print flow, session data lifecycle, and CSS print adjustments."
+---
+
+MediPro produces print-ready technical plans using the browser's native print system. There is no server-side PDF renderer — the output is a styled HTML page loaded in a hidden iframe that triggers `window.print()` automatically.
+
+## Print flow for windows
+
+<Steps>
+  <Step title="Click IMPRIMIR">
+    In the Sistema Nova interface, click the **IMPRIMIR** button. This fires the Livewire `imprimirTodo()` action, which calculates the full fabrication data for every open window tab and writes the result to the PHP session under the key `datos_lote`.
+  </Step>
+  <Step title="Session data saved">
+    `session()->save()` is called explicitly to flush the session to storage before the iframe navigation begins. This guarantees the data is available when the print route reads it.
+  </Step>
+  <Step title="Iframe loads the print view">
+    The `disparar-impresion-total` browser event sets the `src` of a hidden `<iframe id="iframeLote">` to the `plano.imprimir` route (`/plano-imprimir`). The route reads `datos_lote` from the session and renders the `planos2d` Blade view.
+  </Step>
+  <Step title="Browser print dialog opens">
+    After a 600 ms delay (to allow CDN CSS to load inside the iframe), `iframe.contentWindow.print()` is called, opening the browser's native print dialog.
+  </Step>
+</Steps>
+
+## Print flow for doors
+
+The door print flow follows the same pattern but uses a different route and view:
+
+| | Windows | Doors |
+|---|---|---|
+| Route name | `plano.imprimir` | `puertas.imprimir` |
+| URL | `/plano-imprimir` | `/puertas-imprimir` |
+| Session key | `datos_lote` | `puertas` |
+| Blade view | `planos2d` | `planos2dPuerta` |
+
+## What the printed output includes
+
+Each window or door in the batch produces one print block containing:
+
+- A **header** with the window/door name, total dimensions, and adjusted width.
+- The **2D technical plan** with all dimension arrows and proportionally scaled panel layout.
+- A **fabrication materials table** listing every profile and accessory with catalog code, cut length in cm, and quantity.
+
+For doors, the print view also shows material type, transom presence, and accessory quantities with product names resolved from `datos.xlsx`.
+
+When printing more than three windows, the `planos2d` view switches to a two-column grid layout to fit more plans per A4 page.
+
+## CSS print configuration
+
+Both print views use `@media print` rules to ensure correct output:
+
+```css
+@page {
+    size: A4;
+    margin: 10px;
+}
+
+@media print {
+    body {
+        zoom: 0.65; /* windows view */
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
+
+    .plano {
+        max-height: 135mm;
+        break-inside: avoid;
+        transform: scale(0.85);
+        transform-origin: top center;
+    }
+}
+```
+
+The `-webkit-print-color-adjust: exact` declaration is critical — without it, most browsers suppress background colors and the panel color coding (blue for sliding, light blue for fixed) would not appear in the printed output.
+
+<Tip>
+  In the browser print dialog, select **Save as PDF** as the destination instead of a physical printer to produce a PDF file. All colors and plan geometry will be preserved exactly as displayed on screen.
+</Tip>
+
+## Session cleanup after printing
+
+<Note>
+  The **Vaciar** button (and the `confirmarImpresion()` method it calls) clears both the `datos_lote` and `ventanas` session keys and resets the component to a single default window. Call this after printing is complete to start a fresh configuration.
+
+  ```php
+  public function confirmarImpresion(): void
+  {
+      session()->forget('datos_lote');
+      session()->forget('ventanas');
+      session()->save();
+
+      // Reset component state to a single default window
+      $this->ventanas = [[
+          'nombre' => 'V - 1',
+          'ancho'  => $this->ancho,
+          // ...
+      ]];
+      $this->ventanaActiva = 0;
+  }
+  ```
+</Note>
+
+## Route definitions
+
+```php
+// routes/web.php
+
+Route::get('/plano-imprimir', function () {
+    $datos = session('datos_lote', []);
+    return view('planos2d', compact('datos'));
+})->name('plano.imprimir');
+
+Route::get('/puertas-imprimir', function () {
+    $datos = session('puertas', []);
+    return view('planos2dPuerta', compact('datos'));
+})->name('puertas.imprimir');
+```
+
+Both routes are stateless GET requests — the data is passed entirely through the PHP session, not the URL. This keeps URLs clean and avoids exposing configuration data in query strings.

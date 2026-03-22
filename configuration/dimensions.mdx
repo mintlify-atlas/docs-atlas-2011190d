@@ -1,0 +1,132 @@
+---
+title: "Dimension Configuration"
+description: "How MediPro calculates adjusted dimensions from user-entered measurements"
+---
+
+MediPro takes five user-entered measurements and derives all glass sizes, section heights, and transom dimensions from them automatically. Understanding these calculations helps you verify cut lists and catch entry errors before fabrication.
+
+## Input fields
+
+| Field | Label in UI | Default | Notes |
+|---|---|---|---|
+| `ancho` | Ancho (cm) | 205 | Overall window width |
+| `alto` | Alto (cm) | 165 | Overall window height |
+| `altoPuente` | Puente (cm) | 130 | Bridge / lower section height |
+| `numCorredizas` | Corredizas | 1 | Sliding panels — min 1, max 3 |
+| `numFijos` | Fijos | 2 | Fixed panels — min 1, max 3 |
+
+All five fields are bound via `wire:model.blur`, so calculations update when you leave the field. Changes are automatically persisted to the PHP session.
+
+## Width adjustment (`anchoAjustado`)
+
+The total number of divisions (`totalDivisions = numCorredizas + numFijos`) determines whether a compensation offset is added to `ancho` before any widths are divided.
+
+<AccordionGroup>
+  <Accordion title="Width adjustment formula">
+
+```php
+$anchoAjustado = match ($this->divisionesInferiores) {
+    3 => $this->ancho + 1,
+    5 => $this->ancho + 2,
+    6 => $this->ancho + 3,
+    default => $this->ancho,   // 2 or 4 divisions: no adjustment
+};
+```
+
+| Total divisions | Adjustment | Example (ancho = 205) |
+|---|---|---|
+| 2 | +0 | 205.0 cm |
+| 3 | +1 | 206.0 cm |
+| 4 | +0 | 205.0 cm |
+| 5 | +2 | 207.0 cm |
+| 6 | +3 | 208.0 cm |
+
+The offset compensates for the extra frame material introduced when more uprights are inserted between panels.
+  </Accordion>
+
+  <Accordion title="Height calculations">
+
+The window is divided into a lower section (infrared / main panels) and an optional upper transom (sobreluz).
+
+```php
+$altoInf = $this->altoPuente;   // lower section = bridge height
+$altoSup = max(0, $this->alto - $this->altoPuente - 2.1); // upper transom
+```
+
+The constant `2.1` cm (`$sobreluz`) accounts for the horizontal profile separating the two sections. The upper transom section is only rendered when `altoSup > 0`. If `alto` is close to or equal to `altoPuente`, no transom appears.
+
+| Input | Calculation | Result (defaults) |
+|---|---|---|
+| `altoInf` | `altoPuente` | 130.0 cm |
+| `altoSup` | `165 − 130 − 2.1` | 32.9 cm |
+  </Accordion>
+
+  <Accordion title="Glass dimension formulas">
+
+Each panel's glass width is derived from `anchoAjustado / totalDivisions` with a type-specific offset:
+
+```php
+$base = $anchoAjustado / $divisionesInferiores;
+
+// Fixed panel glass width:   base + 0.6
+// Sliding panel glass width: base - 0.6
+```
+
+The glass height uses a different offset per panel type:
+
+```php
+// Fixed panel glass height:   altoPuente - 1.0
+// Sliding panel glass height: altoPuente - 3.5
+```
+
+The larger deduction for sliding panels (3.5 cm vs 1.0 cm) accommodates the roller track at the bottom.
+
+| Constant | Variable name | Value |
+|---|---|---|
+| Glass ± offset | `$vidrio` | 0.6 cm |
+| Fixed height deduction | `$vfijo` | 1.0 cm |
+| Sliding height deduction | `$vcorrediza` | 3.5 cm |
+  </Accordion>
+
+  <Accordion title="Transom (sobreluz) calculation">
+
+When a transom exists (`altoSup > 0`), it is divided into 1, 2, or 3 equal panels depending on total divisions:
+
+```php
+$c = $divisiones >= 5 ? 3 : ($divisiones >= 3 ? 2 : 1);
+$a = $ancho / $c;
+
+// Each transom panel:
+'ancho' => trunc($a) - 0.3,  // $sbancho = 0.3 cm deduction
+'alto'  => trunc($altoSup),
+```
+
+| Total divisions | Transom panels |
+|---|---|
+| 1–2 | 1 (label: TL) |
+| 3–4 | 2 (labels: TL 1, TL 2) |
+| 5+ | 3 (labels: TL 1, TL 2, TL 3) |
+  </Accordion>
+</AccordionGroup>
+
+## Worked example
+
+Inputs: **Ancho = 205**, **Alto = 165**, **Puente = 130**, **1 corrediza + 2 fijos** (3 divisions total).
+
+| Derived value | Formula | Result |
+|---|---|---|
+| `anchoAjustado` | 205 + 1 (3 divisions) | **206.0 cm** |
+| `altoInf` | 130 | **130.0 cm** |
+| `altoSup` | 165 − 130 − 2.1 | **32.9 cm** |
+| Width per division | 206 / 3 | 68.666... cm |
+| Fixed glass width | 68.666 + 0.6 | **69.2 cm** |
+| Sliding glass width | 68.666 − 0.6 | **68.0 cm** |
+| Fixed glass height | 130 − 1.0 | **129.0 cm** |
+| Sliding glass height | 130 − 3.5 | **126.5 cm** |
+| Transom panel width | trunc(206 / 3) − 0.3 = 68.6 − 0.3 | **68.3 cm** |
+| Transom panel height | trunc(32.9) | **32.9 cm** |
+| Transom count | 3 divisions → 2 panels | **2** |
+
+<Note>
+All dimension values are truncated to one decimal place using PHP's `floor()` — not rounded. A value of 68.66 becomes 68.6, not 68.7. Keep this in mind when cross-checking manual calculations.
+</Note>

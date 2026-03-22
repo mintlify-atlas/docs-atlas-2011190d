@@ -1,0 +1,48 @@
+---
+title: "Puerta 2 Hojas"
+description: "Double hinged door with central closure"
+---
+
+The **Puerta 2 Hojas** is a double-leaf hinged aluminum door where both leaves meet at the centre of the frame and are secured by a central closure mechanism.
+
+<Warning>
+This door type is not yet available. Selecting "Puerta 2 Hojas" in the application currently displays a "Próximamente" (coming soon) screen. No configuration inputs or calculation logic have been implemented.
+</Warning>
+
+## What this door type will be
+
+The Puerta 2 Hojas is described in the system selector as a **doble hoja abatible con cierre central** — a double hinged door with a central latch.
+
+In this configuration:
+
+- The frame opening is divided into two equal-width leaves
+- Each leaf is hinged on its outer edge (one on the left, one on the right)
+- Both leaves swing inward or outward and meet flush at the centre when closed
+- A central closure mechanism (typically a latch or multi-point lock) secures the meeting stile of both leaves
+
+## Planned features
+
+<CardGroup cols={2}>
+  <Card title="Dimension inputs" icon="ruler">
+    Overall frame width and height, with each leaf width automatically set to half the clear opening minus the meeting-stile allowance.
+  </Card>
+  <Card title="Frame profiles" icon="square">
+    Perimeter frame profiles for the full opening — two verticals and top and bottom horizontals.
+  </Card>
+  <Card title="Leaf profiles" icon="rectangle-horizontal">
+    Individual leaf frame profiles (stiles and rails) for both leaves, calculated from the derived leaf dimensions.
+  </Card>
+  <Card title="Glass panels" icon="panel-left">
+    Two glass sizes, one per leaf, with standard clearance deductions.
+  </Card>
+  <Card title="Central closure" icon="lock">
+    Central latch or multi-point lock hardware included in the accessories list.
+  </Card>
+  <Card title="Hinges" icon="git-merge">
+    Hinge count and specification per leaf, following the same 3×3 pattern used in the Puerta Clásica.
+  </Card>
+</CardGroup>
+
+## Current application behaviour
+
+Selecting this system in the door selector (`PuertaSeleccionado = 'Puerta 2 Hojas'`) falls into the default `@else` branch of the router component. The screen shows an animated rocket graphic with the label **"Estamos trabajando"** and a **"Próximamente"** badge, indicating active development.

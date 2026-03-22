@@ -1,0 +1,136 @@
+---
+title: "Aluminum Profiles"
+description: "Understanding the profile catalog and how profile quantities are calculated"
+---
+
+MediPro builds a complete cut list for each window based on its dimensions and panel layout. Each line in the cut list identifies a profile code, a cut length, and a quantity. Profile names are resolved at render time from an Excel catalog file.
+
+## Profile catalog (`datos.xlsx`)
+
+Profile names are stored in an Excel file located at `public/datos.xlsx`. The file is loaded on component mount via `procesarPerfiles()`:
+
+```php
+public function procesarPerfiles(): void
+{
+    $ruta = public_path('datos.xlsx');
+    if (!file_exists($ruta)) {
+        return;
+    }
+
+    $this->data = collect(Excel::toArray([], $ruta)[0])
+        ->pluck(0)      // first column of the first sheet
+        ->filter()
+        ->values()
+        ->toArray();
+}
+```
+
+The loaded array (`$this->data`) contains one entry per row — each entry is the full product name string as it appears in the spreadsheet, for example `"7955 - U 3/4 NEGRO 6MT"`.
+
+<Warning>
+If `datos.xlsx` is missing from the `public/` directory, `procesarPerfiles()` returns early and `$this->data` remains empty. In that case, the cut list will display the numeric code only (e.g., `COD: 7955`) instead of the resolved product name. Place the file at `public/datos.xlsx` before first use.
+</Warning>
+
+### Name lookup pattern
+
+At render time each profile entry is matched against the catalog using a substring search:
+
+```php
+foreach ($this->data as $nombreCompleto) {
+    if (str_contains((string) $nombreCompleto, (string) $codigoBuscado)) {
+        $nombreProductoExcel = $nombreCompleto;
+        break;
+    }
+}
+```
+
+<Note>
+The match uses `str_contains()`, not an exact key lookup. This means a catalog row `"7955 - U 3/4 NEGRO 6MT"` will match when the code searched is `"7955"`. Catalog rows must include the numeric code as a substring; formatting and description text around it do not matter.
+</Note>
+
+## Sistema Nova profile table
+
+The following profiles are calculated for every Sistema Nova window. Lengths are in centimetres.
+
+| Profile name | Code | Quantity | Length |
+|---|---|---|---|
+| U 3/4 | 7955 | 1 | `ancho` |
+| T/M | 5283 | 1 | `ancho` |
+| RIEL L | 8413 | 1 | `ancho` |
+| U F *(per unique fixed width)* | 3003 | count of fixed panels at that width | `anchoVidrio` (fixed) |
+| H *(per unique sliding width)* | 8220 | count of sliding panels at that width | `anchoVidrio` (sliding) |
+| PF Fijo | 8115 - FIJO | see upright calculation below | `altoPuente − 0.3` |
+| PF Corrediza | 8115 - CORREDIZA | `numCorredizas × 2` | `altoPuente − 2.0` |
+
+The three header profiles (U 3/4, T/M, RIEL L) always have quantity 1 and length equal to the raw `ancho` (not the adjusted value).
+
+```php
+$w = $this->trunc($this->ancho);
+$det['U 3/4'] = ['label' => '7955', 'alto' => $w, 'cantidad' => 1];
+$det['T/M']   = ['label' => '5283', 'alto' => $w, 'cantidad' => 1];
+$det['RIEL L']= ['label' => '8413', 'alto' => $w, 'cantidad' => 1];
+```
+
+## Upright (parante) calculation for PF Fijo
+
+The number of PF Fijo uprights depends on the position of each fixed panel relative to its neighbours.
+
+<AccordionGroup>
+  <Accordion title="Upright counting logic">
+
+```php
+$pf = 0;
+foreach ($this->bloques as $i => $b) {
+    if ($b === 'Fijo') {
+        $pf += ($this->bloques[$i - 1] ?? null) === 'Corrediza'
+            && ($this->bloques[$i + 1] ?? null) === 'Corrediza'
+            ? 2   // fixed panel sandwiched between two sliding panels
+            : 1;  // fixed panel on an edge or next to another fixed
+    }
+}
+```
+
+The rule is:
+
+- A fixed panel flanked by sliding panels on **both** sides requires **2 uprights** (one for each side).
+- A fixed panel on an edge or adjacent to another fixed panel requires **1 upright**.
+
+| Block arrangement | PF Fijo count |
+|---|---|
+| F C F (1C + 2F) | 1 + 1 = **2** |
+| F F C (1C + 2F, edge) | 1 + 1 = **2** |
+| F C F C F (2C + 3F) | 1 + 2 + 1 = **4** |
+| F C F C F C (3C + 3F) | 1 + 2 + 1 = **4** |
+  </Accordion>
+
+  <Accordion title="PF Corrediza calculation">
+
+Sliding panels always get two uprights each — one for each vertical side of the frame:
+
+```php
+$det['PF Corrediza'] = [
+    'label'    => '8115',
+    'tipo'     => 'CORREDIZA',
+    'alto'     => $this->trunc($this->altoPuente - 2.0),
+    'cantidad' => $this->numCorredizas * 2,
+];
+```
+
+The 2.0 cm deduction (`$pfcorrediza`) clears the bottom roller track.
+  </Accordion>
+</AccordionGroup>
+
+## Glass panel grouping
+
+Fixed and sliding glass widths are grouped by their computed width value. If two fixed panels have identical computed widths, they are listed as one row with `cantidad = 2` rather than two separate rows:
+
+```php
+foreach ($this->medidasBloques as $b) {
+    $a = number_format($b['ancho'], 1, '.', '');
+    $b['tipo'] === 'F'
+        ? ($f[$a] = ($f[$a] ?? 0) + 1)
+        : ($c[$a] = ($c[$a] ?? 0) + 1);
+}
+```
+
+This grouping means the cut list stays compact even for 5- or 6-division windows.

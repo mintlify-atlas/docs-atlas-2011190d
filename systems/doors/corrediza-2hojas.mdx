@@ -1,0 +1,46 @@
+---
+title: "Puerta Corrediza - 2 Hojas"
+description: "Double-leaf sliding door with linear guide system"
+---
+
+The **Puerta Corrediza - 2 Hoja** is a two-panel sliding door where both leaves travel along a shared top rail. The panels slide in opposite directions so that the full opening is revealed when both are parked against the adjacent wall sections.
+
+Livewire component: `puertas.corrediza2hoja`
+
+<Warning>
+This component is a stub and has not yet been implemented. The current source renders only a placeholder text label. No inputs, calculations, or fabrication summary are available.
+</Warning>
+
+## Planned behaviour
+
+Based on the system description in the door selector ("2 Hojas móviles con guiado lineal"), the completed component will work as follows:
+
+- Two equal-width leaves share a single top rail
+- Each leaf slides in opposite directions (one left, one right) to open the passage
+- The total frame width is split equally between the two leaves
+- Both leaves require their own set of frame profiles, glass panels, and roller hardware
+
+## Planned features
+
+When fully implemented, this component is expected to include:
+
+<CardGroup cols={2}>
+  <Card title="Dimension inputs" icon="ruler">
+    Overall frame width and height entries, with the leaf width derived automatically as half the clear opening.
+  </Card>
+  <Card title="Rail profile" icon="minus">
+    Top and bottom rail cut lengths calculated from the total frame width.
+  </Card>
+  <Card title="Leaf profiles" icon="rectangle-horizontal">
+    Frame profiles for both leaves — vertical stiles and horizontal rails — calculated from the individual leaf dimensions.
+  </Card>
+  <Card title="Glass panels" icon="square">
+    Two glass sizes, one per leaf, with standard clearance deductions applied.
+  </Card>
+  <Card title="Roller hardware" icon="settings">
+    Roller and guide hardware quantities for both leaves.
+  </Card>
+  <Card title="Fabrication summary" icon="file-text">
+    Full cut list and accessory list ready for printing.
+  </Card>
+</CardGroup>

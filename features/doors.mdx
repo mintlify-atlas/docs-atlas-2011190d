@@ -1,0 +1,74 @@
+---
+title: "Door Configuration"
+description: "Configure aluminum door systems for fabrication. Choose from five door types and generate a technical 2D plan with a materials summary."
+---
+
+The door module is available at `/Puerta`. It is powered by the `puertas.app` Livewire component, which presents a selection grid of available door types and dynamically loads the corresponding sub-component once a type is chosen.
+
+## Selecting a door type
+
+When you navigate to `/Puerta`, you are shown a grid of five door types. Click any card to load that type's configuration interface.
+
+<CardGroup cols={2}>
+  <Card title="Puerta Clásica" icon="shield-halved" href="/features/doors">
+    Standard door with reinforced profiles and high durability. Loaded via `livewire:puertas.normal`.
+  </Card>
+  <Card title="Puerta - Diseño Personalizable" icon="sliders" href="/features/doors">
+    Fully customizable aesthetic and technical configuration. Loaded via `livewire:puertas.personalizable`.
+  </Card>
+  <Card title="Puerta Corrediza - 1 Hoja" icon="arrows-left-right" href="/features/doors">
+    Single sliding leaf with linear guide rail. Loaded via `livewire:puertas.corrediza1hoja`.
+  </Card>
+  <Card title="Puerta 2 Hojas" icon="door-closed" href="/features/doors">
+    Double swing leaf with central latch closure. Coming soon.
+  </Card>
+  <Card title="Puerta Corrediza - 2 Hoja" icon="arrows-left-right" href="/features/doors">
+    Two sliding leaves with linear guide rail. Loaded via `livewire:puertas.corrediza2hoja`.
+  </Card>
+</CardGroup>
+
+<Note>
+  **Puerta 2 Hojas** displays a "Coming soon" screen when selected. All other door types load fully functional sub-components. The selected door type is stored in the session under `PuertaSeleccionado` and persists across page reloads.
+</Note>
+
+## Selector pattern
+
+The `puertas.app` component acts as a router. It stores the selected type in `$PuertaSeleccionado` and conditionally renders the appropriate Livewire sub-component based on that value:
+
+```php
+// puertas/⚡app.blade.php — conditional rendering
+@elseif ($PuertaSeleccionado === 'Puerta Clásica')
+    <livewire:puertas.normal />
+@elseif ($PuertaSeleccionado === 'Puerta - Diseño Personalizable')
+    <livewire:puertas.personalizable />
+@elseif ($PuertaSeleccionado === 'Puerta Corrediza - 1 Hoja')
+    <livewire:puertas.corrediza1hoja />
+@elseif ($PuertaSeleccionado === 'Puerta Corrediza - 2 Hoja')
+    <livewire:puertas.corrediza2hoja />
+```
+
+Each sub-component manages its own state, dimension inputs, and plan rendering independently from the others.
+
+## Resetting the door type
+
+Once a door type is selected, the header replaces the selection grid with the active type name and a **Cambiar** button. Clicking **Cambiar** calls the `resetear()` method, which:
+
+1. Sets `$PuertaSeleccionado` back to `null`.
+2. Removes the `PuertaSeleccionado` key from the session.
+3. Returns the user to the full door type selection grid.
+
+This allows switching to a different door type without navigating away from the `/Puerta` route.
+
+## Sub-component reference
+
+| Door type | Livewire component |
+|---|---|
+| Puerta Clásica | `puertas.normal` |
+| Puerta - Diseño Personalizable | `puertas.personalizable` |
+| Puerta Corrediza - 1 Hoja | `puertas.corrediza1hoja` |
+| Puerta Corrediza - 2 Hoja | `puertas.corrediza2hoja` |
+| Puerta 2 Hojas | *(not yet implemented)* |
+
+<Info>
+  Door sub-components follow the same session-based persistence pattern as the window module. Each sub-component writes its configuration to the session so that data survives page refreshes within the same browser session.
+</Info>

@@ -1,0 +1,113 @@
+---
+title: "Routes"
+description: "All web routes defined in MediPro"
+---
+
+All routes in MediPro are defined in `routes/web.php` as simple closures. There are no resource controllers, API routes, or route groups — only five `GET` routes.
+
+## Route table
+
+| Method | Path | View | Description |
+|--------|------|------|-------------|
+| `GET` | `/` | `welcome` | Home screen with the module selector |
+| `GET` | `/Ventana` | `Ventana` | Window configuration module |
+| `GET` | `/Puerta` | `Puerta` | Door configuration module |
+| `GET` | `/plano-imprimir` | `planos2d` | Print view for windows — reads `session('datos_lote')` |
+| `GET` | `/puertas-imprimir` | `planos2dPuerta` | Print view for doors — reads `session('puertas')` |
+
+## Route definitions
+
+The complete `routes/web.php` file:
+
+```php
+<?php
+
+use Illuminate\Support\Facades\Route;
+
+Route::get('/', function () {
+    return view('welcome');
+});
+
+Route::get('Ventana', function () {
+    return view('Ventana');
+});
+
+Route::get('Puerta', function () {
+    return view('Puerta');
+});
+
+Route::get('/plano-imprimir', function () {
+    $datos = session('datos_lote', []);
+    return view('planos2d', compact('datos'));
+})->name('plano.imprimir');
+
+Route::get('/puertas-imprimir', function () {
+    $datos = session('puertas', []);
+    return view('planos2dPuerta', compact('datos'));
+})->name('puertas.imprimir');
+```
+
+## Named routes
+
+Only the two print routes have names:
+
+| Name | Path |
+|------|------|
+| `plano.imprimir` | `/plano-imprimir` |
+| `puertas.imprimir` | `/puertas-imprimir` |
+
+<Note>
+  These names are referenced in Blade templates using the `route()` helper. For example, in `ventanas.sistema-nova` the hidden iframe uses `data-url="{{ route('plano.imprimir') }}"` to avoid hardcoding the path.
+</Note>
+
+## Session-based print flow
+
+The print routes do not accept query parameters or request bodies. Instead, they read data that was previously saved to the PHP session by a Livewire action.
+
+<Steps>
+  <Step title="User clicks IMPRIMIR in the window configurator">
+    `imprimirTodo()` in `ventanas.sistema-nova` calculates the complete data for every window in the current session, then saves the result to `session('datos_lote')`:
+
+    ```php
+    session()->put('datos_lote', $ventanasCompletas);
+    session()->save();
+    ```
+  </Step>
+  <Step title="Browser event triggers the iframe">
+    After saving to session, the component dispatches the `disparar-impresion-total` event. A JavaScript listener in the component template sets the iframe's `src` to `route('plano.imprimir')`, which triggers a GET request to `/plano-imprimir`.
+  </Step>
+  <Step title="Print route reads session and renders the view">
+    The `/plano-imprimir` route closure reads `session('datos_lote', [])` and passes it as `$datos` to the `planos2d` Blade view. The view renders a printable layout for all windows and the browser's print dialog opens automatically.
+
+    ```php
+    Route::get('/plano-imprimir', function () {
+        $datos = session('datos_lote', []);
+        return view('planos2d', compact('datos'));
+    })->name('plano.imprimir');
+    ```
+  </Step>
+</Steps>
+
+The door print flow is identical, except that the session key is `puertas` and the route is `/puertas-imprimir`:
+
+```php
+Route::get('/puertas-imprimir', function () {
+    $datos = session('puertas', []);
+    return view('planos2dPuerta', compact('datos'));
+})->name('puertas.imprimir');
+```
+
+## No controller classes
+
+The base `App\Http\Controllers\Controller` class exists in the project but is empty and unused:
+
+```php
+namespace App\Http\Controllers;
+
+abstract class Controller
+{
+    //
+}
+```
+
+All route logic is handled directly in closures within `routes/web.php`. Livewire components own all application behavior beyond simple view rendering.

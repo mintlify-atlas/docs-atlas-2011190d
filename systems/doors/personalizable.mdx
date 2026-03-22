@@ -1,0 +1,70 @@
+---
+title: "Puerta Personalizable"
+description: "Custom-design door with configurable aesthetic and technical options"
+---
+
+The **Puerta Personalizable** is an interactive door designer that lets you build a custom panel layout on a visual canvas. Panels are added to a fixed grid inside the door frame and can be removed by double-clicking.
+
+Livewire component: `puertas.personalizable`
+
+<Warning>
+This component is in an early prototype stage. It currently provides a visual panel-placement canvas but does not yet perform profile or glass calculations. Dimension inputs and a fabrication summary are not yet implemented.
+</Warning>
+
+## How it works
+
+The designer presents a fixed door frame (80 × 500 px canvas) with a configurable grid inside it. You populate the grid by adding rectangular panels, which represent glazed or solid sections of the door leaf.
+
+### Grid layout
+
+The internal grid uses `cols = 3` columns by default. All panels are placed into this grid using equal-width columns and a 3 px gap between cells.
+
+### Adding a panel
+
+Click **Agregar Cuadro** to append a new panel to the grid. Each panel receives a unique ID and is rendered as a coloured cell inside the door frame.
+
+### Removing a panel
+
+Double-click any panel cell inside the door frame to remove it. The remaining panels reindex automatically.
+
+## Drag-and-drop (in development)
+
+The component includes a JavaScript designer scaffold (`initDesigner`) that sets up drag-and-drop behaviour for repositioning panels on the canvas. The scaffold listens for the following Livewire events:
+
+| Event | Payload | Description |
+|---|---|---|
+| `add-panel` | `{ x, y }` | Place a new panel at a snapped grid position |
+| `move-panel` | `{ id, x, y }` | Move an existing panel to a new position |
+
+All coordinates are snapped to a 20 px grid to keep panel placement consistent.
+
+<Note>
+The drag-and-drop event handlers (`add-panel`, `move-panel`) are wired in the frontend JavaScript but the corresponding Livewire listeners are not yet implemented in the PHP component class. Full drag-and-drop positioning will be available in a future release.
+</Note>
+
+## Customization options
+
+<CardGroup cols={2}>
+  <Card title="Panel count" icon="grid-2x2">
+    Add as many panels as needed. Each represents an independent section of the door design.
+  </Card>
+  <Card title="Grid columns" icon="columns-3">
+    The `cols` property controls how many columns the internal grid uses. Currently set to 3 by default.
+  </Card>
+  <Card title="Panel removal" icon="square-x">
+    Double-click any panel on the canvas to remove it instantly.
+  </Card>
+  <Card title="Snap-to-grid" icon="magnet">
+    Drag interactions snap to a 20 px grid for precise panel alignment.
+  </Card>
+</CardGroup>
+
+## Planned features
+
+Based on the component description in the door selector, the completed Puerta Personalizable will support:
+
+- Custom aesthetic configuration (colours, finishes)
+- Technical options per panel (glazed, solid, louvred)
+- Dimension inputs for the overall frame
+- Profile and glass cut-list generation
+- Export to print-ready fabrication summary

@@ -1,0 +1,194 @@
+---
+title: "Livewire Components"
+description: "Reference for all Livewire components in MediPro"
+---
+
+All interactive UI in MediPro is built with **Livewire Volt** single-file components. Each component file contains a PHP anonymous class and a Blade template in the same `.blade.php` file. The `⚡` prefix in the filename is the Volt naming convention that triggers automatic component discovery and registration.
+
+<Info>
+  Component names follow the directory path relative to `resources/views/components/`, using dot notation. For example, `resources/views/components/ventanas/⚡app.blade.php` is referenced as `<livewire:ventanas.app />`.
+</Info>
+
+## Window components
+
+| Component | File | Responsibility |
+|-----------|------|----------------|
+| `ventanas.app` | `resources/views/components/ventanas/⚡app.blade.php` | System selector — renders the grid of window type cards and conditionally mounts the correct configurator sub-component |
+| `ventanas.sistema-nova` | `resources/views/components/ventanas/⚡sistema-nova.blade.php` | Sistema Nova configurator — full dimension input, 2D plan diagram, profile detail table, and multi-window tab management |
+
+## Door components
+
+| Component | File | Responsibility |
+|-----------|------|----------------|
+| `puertas.app` | `resources/views/components/puertas/⚡app.blade.php` | Door type selector — renders the grid of door type cards and conditionally mounts the correct configurator sub-component |
+| `puertas.normal` | `resources/views/components/puertas/⚡normal.blade.php` | Classic door configurator |
+| `puertas.personalizable` | `resources/views/components/puertas/⚡personalizable.blade.php` | Custom door configurator with aesthetic and technical options |
+| `puertas.corrediza1hoja` | `resources/views/components/puertas/⚡corrediza1hoja.blade.php` | Sliding 1-leaf door configurator |
+| `puertas.corrediza2hoja` | `resources/views/components/puertas/⚡corrediza2hoja.blade.php` | Sliding 2-leaf door configurator |
+
+## State management in `ventanas.sistema-nova`
+
+This is the most complex component in the application. Its state is organized into three layers.
+
+### Public properties (reactive state)
+
+These properties are bound directly to form inputs via `wire:model.blur` and drive all computed values:
+
+```php
+public float $ancho = 205;        // Total width in cm
+public float $alto = 165;         // Total height in cm
+public float $altoPuente = 130;   // Lower section height (bridge) in cm
+public int   $numCorredizas = 1;  // Number of sliding panels
+public int   $numFijos = 2;       // Number of fixed panels
+```
+
+### Multi-window management
+
+The component supports configuring multiple windows in a single session using a tab interface:
+
+```php
+public array $ventanas = [];      // Array of window snapshots
+public int   $ventanaActiva = 0;  // Index of the currently selected tab
+```
+
+Each entry in `$ventanas` is a snapshot array with the same keys as the public properties above, plus a `nombre` label (e.g., `'V - 1'`). When the user switches tabs, `cambiarVentana(int $i)` saves the current snapshot, updates `$ventanaActiva`, and loads the new tab's values into the public properties.
+
+### Internal adjustment constants
+
+These protected properties define the correction factors used in glass dimension calculations:
+
+```php
+protected float $vidrio = 0.6;       // Glass width adjustment per panel
+protected float $pffijo = 0.3;       // Fixed upright height reduction
+protected float $pfcorrediza = 2.0;  // Sliding upright height reduction
+protected float $sobreluz = 2.1;     // Transom height offset
+protected float $sbancho = 0.3;      // Transom panel width reduction
+protected float $vfijo = 1.0;        // Fixed glass height reduction
+protected float $vcorrediza = 3.5;   // Sliding glass height reduction
+```
+
+### Lifecycle hooks
+
+**`mount()`** — Called once when the component is first rendered. Loads the profile catalog from `public/datos.xlsx` via `procesarPerfiles()`, then restores any saved window set from `session('ventanas', [])`. Defaults to a single window (`V - 1`) if no session exists.
+
+**`updated($propertyName)`** — Called automatically by Livewire after any public property changes. Saves the current window state as a snapshot and persists the entire `$ventanas` array to the session:
+
+```php
+public function updated($propertyName)
+{
+    $this->guardarVentanaActual();
+    session()->put('ventanas', $this->ventanas);
+}
+```
+
+This ensures data survives page refreshes without any explicit save button.
+
+## Computed properties
+
+Computed properties follow Livewire's `getXxxProperty()` convention. They are accessed in templates as `$this->xxx` and recalculate on every render.
+
+| Method | Accessed as | Returns | Description |
+|--------|------------|---------|-------------|
+| `getDivisionesInferioresProperty()` | `$this->divisionesInferiores` | `int` | Total panel count — sum of `$numCorredizas` and `$numFijos` |
+| `getAnchoAjustadoProperty()` | `$this->anchoAjustado` | `float` | Width with a correction factor added based on panel count (+1 cm for 3 panels, +2 for 5, +3 for 6) |
+| `getAltoInfProperty()` | `$this->altoInf` | `float` | Lower section height — alias for `$altoPuente` |
+| `getAltoSupProperty()` | `$this->altoSup` | `float` | Upper transom height — `max(0, $alto - $altoPuente - 2.1)` |
+| `getBloquesProperty()` | `$this->bloques` | `array` | Ordered array of `'Fijo'` / `'Corrediza'` strings representing the panel layout |
+| `getMedidasBloquesProperty()` | `$this->medidasBloques` | `array` | Glass dimensions per panel: `tipo` (`'F'`/`'C'`), `ancho`, and `alto` in cm |
+| `getSobreluzPartesProperty()` | `$this->sobreluzPartes` | `array` | Transom sub-panel dimensions: `ancho`, `alto`, and `label` (e.g., `'TL 1'`) |
+| `getDetalleModulosProperty()` | `$this->detalleModulos` | `array` | Profile detail table data — keyed by profile name, each entry has `label` (product code), `alto` (cut length), and `cantidad` (quantity) |
+| `getAccesoriosProperty()` | `$this->accesorios` | `array` | Accessories quantities: `garruchas`, `pestillos`, and `topes` derived from `$numCorredizas` |
+
+### Panel layout algorithm
+
+`getBloquesProperty()` distributes fixed and sliding panels with special rules for 5- and 6-panel configurations:
+
+```php
+public function getBloquesProperty(): array
+{
+    $t = $this->divisionesInferiores;
+
+    if ($t === 5) {
+        return ['Fijo', 'Corrediza', 'Fijo', 'Corrediza', 'Fijo'];
+    }
+    if ($t === 6) {
+        return ['Fijo', 'Corrediza', 'Fijo', 'Corrediza', 'Fijo', 'Corrediza'];
+    }
+
+    // Default: split fixed panels evenly on left and right of sliding panels
+    $l = intdiv($this->numFijos, 2);
+    return [
+        ...array_fill(0, $l, 'Fijo'),
+        ...array_fill(0, $this->numCorredizas, 'Corrediza'),
+        ...array_fill(0, $this->numFijos - $l, 'Fijo'),
+    ];
+}
+```
+
+## Browser events
+
+The component dispatches events to JavaScript listeners using `$this->dispatch()`:
+
+| Event | Trigger | JavaScript handler |
+|-------|---------|-------------------|
+| `disparar-impresion-total` | After `imprimirTodo()` saves print data to session | Sets `iframe#iframeLote` `src` to `route('plano.imprimir')` and calls `contentWindow.print()` after a 600ms delay |
+| `correcto` | After `agregarVentana()` adds a new tab | iziToast success notification in the top-right corner |
+| `delete` | After `eliminarVentana()` removes a tab | iziToast info notification in the top-right corner |
+
+## `imprimirTodo()` — print action
+
+This method collects all window configurations, calculates the full detail data for each, and triggers the print flow:
+
+```php
+public function imprimirTodo(): void
+{
+    $ventanasCompletas = [];
+
+    foreach ($this->ventanas as $index => $v) {
+        $anchoAjustado = $this->calcularAnchoAjustado(
+            $v['ancho'],
+            $v['numCorredizas'],
+            $v['numFijos']
+        );
+
+        $ventanasCompletas[] = [
+            'nombre'        => $v['nombre'],
+            'ancho'         => $v['ancho'],
+            'alto'          => $v['alto'],
+            'altoPuente'    => $v['altoPuente'],
+            'numCorredizas' => $v['numCorredizas'],
+            'numFijos'      => $v['numFijos'],
+            'altoInf'       => $v['altoPuente'],
+            'altoSup'       => max(0, $v['alto'] - $v['altoPuente'] - $this->sobreluz),
+            'bloques'       => $this->calcularMedidasBloques(...),
+            'sobreluz'      => $this->calcularSobreluz(...),
+            'anchoAjustado' => $anchoAjustado,
+            'detalle'       => $this->calcularDetalleModulos(...),
+            'catalogo'      => $this->data,
+        ];
+    }
+
+    session()->put('datos_lote', $ventanasCompletas);
+    session()->save();
+
+    $this->dispatch('disparar-impresion-total');
+}
+```
+
+<Note>
+  `imprimirTodo()` uses private helper methods (`calcularMedidasBloques`, `calcularDetalleModulos`, `calcularSobreluz`) instead of the reactive computed properties. This avoids temporarily mutating the component's public state when iterating over windows other than the currently active one.
+</Note>
+
+## `selector` components (`ventanas.app` and `puertas.app`)
+
+Both selector components follow the same pattern:
+
+1. `$sistemaSeleccionado` (or `$PuertaSeleccionado`) is `null` by default.
+2. `mount()` restores the selection from the session.
+3. `seleccionar($sistema)` sets the property and saves it to the session.
+4. `resetear()` clears both the property and the session key, returning to the selector grid.
+5. The Blade template conditionally renders either the card grid or the chosen sub-component using `@if` / `@elseif` blocks.
+
+<Warning>
+  Door type `'Puerta 2 Hojas'` does not have a dedicated Livewire sub-component yet — it falls through to the `@else` branch, which renders a "coming soon" placeholder screen.
+</Warning>

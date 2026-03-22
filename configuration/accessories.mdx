@@ -1,0 +1,119 @@
+---
+title: "Accessories"
+description: "Automatic accessory calculation based on window and door configuration"
+---
+
+MediPro automatically derives hardware accessory quantities from the panel configuration. You never enter accessory counts manually — they are recomputed whenever `numCorredizas` changes.
+
+## Sistema Nova accessories
+
+Three accessory types are calculated for every Sistema Nova window:
+
+```php
+public function getAccesoriosProperty(): array
+{
+    return [
+        'garruchas' => $this->numCorredizas * 2,
+        'pestillos' => $this->numCorredizas,
+        'topes'     => $this->numCorredizas * 2,
+    ];
+}
+```
+
+| Accessory | Spanish name | Formula | Per sliding panel |
+|---|---|---|---|
+| Rollers | Garruchas | `numCorredizas × 2` | 2 |
+| Locks / latches | Pestillos | `numCorredizas × 1` | 1 |
+| Stoppers | Topes | `numCorredizas × 2` | 2 |
+
+Each sliding panel rides on two rollers (one at each bottom corner), has one latch, and two stoppers to prevent the panel from being lifted out of the track.
+
+## Quantity examples
+
+**1 sliding panel (`numCorredizas = 1`):**
+
+| Accessory | Quantity |
+|---|---|
+| Garruchas | 2 |
+| Pestillos | 1 |
+| Topes | 2 |
+
+**3 sliding panels (`numCorredizas = 3`):**
+
+| Accessory | Quantity |
+|---|---|
+| Garruchas | 6 |
+| Pestillos | 3 |
+| Topes | 6 |
+
+## Where accessories appear in the UI
+
+Accessories surface in two places within the fabrication summary:
+
+### Summary cards
+
+The top of the fabrication summary section shows four metric cards:
+
+<CardGroup cols={2}>
+  <Card title="Ancho Ajustado" icon="ruler-horizontal">
+    The adjusted window width after applying the division offset. Used as the header dimension for the cut list.
+  </Card>
+  <Card title="Alto Puente" icon="ruler-vertical">
+    The lower section height (`altoPuente`). Drives all profile lengths in the main panel area.
+  </Card>
+  <Card title="Seguros" icon="lock">
+    Displays `accesorios['pestillos']` — the latch count.
+  </Card>
+  <Card title="Garruchas" icon="circle-dot">
+    Displays `accesorios['garruchas']` — the roller count.
+  </Card>
+</CardGroup>
+
+### Profile/accessory detail table
+
+Garruchas and Pestillos also appear as rows in the detailed module table (`detalleModulos`), alongside aluminum profile entries:
+
+```php
+$det['Garruchas'] = [
+    'label'    => 'Garrucha armada',
+    'alto'     => 0,
+    'cantidad' => $numCorredizas * 2,
+];
+$det['Pestillos'] = [
+    'label'    => 'Pestillos',
+    'alto'     => 0,
+    'cantidad' => $numCorredizas,
+];
+```
+
+Note that `topes` appear in the summary card data (`getAccesoriosProperty`) but are not currently listed as a separate row in the printed detail table.
+
+## Normal door accessories
+
+The normal door component (`⚡normal.blade.php`) calculates its own fixed accessory set, independent of the sliding panel count:
+
+```php
+private function calcularAccesorios(): void
+{
+    $this->datos['Bisagras'] = [
+        'medida'   => '3x3',
+        'cantidad' => 3,
+    ];
+
+    $this->datos['Chapas'] = [
+        'medida'   => 'Unidad',
+        'cantidad' => 1,
+    ];
+}
+```
+
+| Accessory | Quantity | Size |
+|---|---|---|
+| Bisagras (hinges) | 3 | 3×3 |
+| Chapas (lock set) | 1 | — |
+
+Door accessories are recalculated each time `recalcular()` runs, which is triggered on any change to `material`, `anchoTotal`, `altoTotal`, `conSobreluz`, or `altoSobreluz`.
+
+<Info>
+The sliding door component (`⚡corrediza1hoja.blade.php`) is currently a UI prototype without calculated accessory logic. Accessory formulas for sliding doors will vary by door type once that component is fully implemented.
+</Info>

@@ -1,0 +1,154 @@
+---
+title: "Architecture Overview"
+description: "How MediPro is structured using Laravel, Livewire, and Blade"
+---
+
+MediPro is a single-server web application with no REST API layer. All business logic runs on the server via Livewire components; the browser only exchanges small JSON payloads over a persistent WebSocket-like connection maintained by Livewire's runtime.
+
+## Technology stack
+
+<CardGroup cols={2}>
+  <Card title="Laravel 12" icon="server">
+    Backend framework. Handles routing, session management, and the HTTP lifecycle. No Eloquent models are used — there is no traditional database.
+  </Card>
+  <Card title="Livewire 4" icon="bolt">
+    Reactive UI without full page reloads. Components re-render on the server and send DOM diffs to the browser. Uses the Volt single-file component pattern.
+  </Card>
+  <Card title="Blade" icon="code">
+    Laravel's templating engine. Full-page layouts (`Ventana.blade.php`, `Puerta.blade.php`) are plain Blade files that mount Livewire root components.
+  </Card>
+  <Card title="Tailwind CSS" icon="palette">
+    Utility-first CSS framework. Loaded via the `@tailwindcss/browser` CDN build in page `<head>` tags, and also compiled through Vite for the app stylesheet.
+  </Card>
+  <Card title="Alpine.js" icon="zap">
+    Minimal JavaScript for lightweight client-side interactions (toggling, transitions). Bundled by Livewire 4 automatically.
+  </Card>
+  <Card title="DaisyUI" icon="layout">
+    UI component library built on Tailwind. Loaded from CDN (`cdn.jsdelivr.net/npm/daisyui@5`).
+  </Card>
+  <Card title="Vite" icon="package">
+    Asset bundler. Compiles `resources/css/app.css` and `resources/js/app.js`. The `laravel-vite-plugin` and `@tailwindcss/vite` plugins are configured in `vite.config.js`.
+  </Card>
+  <Card title="Maatwebsite/Excel" icon="file">
+    Reads the `public/datos.xlsx` profile catalog at runtime. Used in `procesarPerfiles()` to load aluminum profile names for display in the detail table.
+  </Card>
+  <Card title="barryvdh/laravel-dompdf" icon="printer">
+    Server-side PDF generation. Available as a fallback for generating print documents without a browser.
+  </Card>
+  <Card title="spatie/browsershot" icon="camera">
+    Browser-based screenshot and PDF generation. Uses a headless Chromium instance to render the print view and capture it as a PDF.
+  </Card>
+</CardGroup>
+
+## Application flow
+
+The following describes the complete lifecycle of a window configuration session.
+
+<Steps>
+  <Step title="User visits /Ventana or /Puerta">
+    Laravel routes the request to a closure that returns the `Ventana` or `Puerta` Blade view. These are plain HTML pages that load CDN assets and mount a Livewire root component via `<livewire:ventanas.app />` or `<livewire:puertas.app />`.
+  </Step>
+  <Step title="Blade layout initializes the Livewire root component">
+    The root component (`ventanas.app` or `puertas.app`) renders a grid of system type cards. On `mount()`, it reads `session('sistemaSeleccionado')` to restore any previously chosen system.
+  </Step>
+  <Step title="User selects a system type">
+    Clicking a card fires `wire:click="seleccionar('Sistema Nova')"`. The `seleccionar($sistema)` action sets `$sistemaSeleccionado`, persists it to the session, and triggers a Livewire re-render. The card grid is replaced by the appropriate sub-component.
+  </Step>
+  <Step title="Sub-component loads">
+    For window systems, `<livewire:ventanas.sistema-nova />` is dynamically rendered inside `ventanas.app`. The sub-component's `mount()` hook restores any saved window set from `session('ventanas', [])`.
+  </Step>
+  <Step title="User enters dimensions">
+    Input fields use `wire:model.blur` bindings for `$ancho`, `$alto`, `$altoPuente`, `$numCorredizas`, and `$numFijos`. On blur, Livewire calls `updated($propertyName)`, which saves the current window snapshot to `session('ventanas')`.
+  </Step>
+  <Step title="Computed properties recalculate">
+    Every re-render evaluates computed properties: `anchoAjustado`, `bloques`, `medidasBloques`, `detalleModulos`, and `accesorios`. These drive the 2D plan diagram and the profile detail table displayed below it.
+  </Step>
+  <Step title="User clicks IMPRIMIR">
+    `imprimirTodo()` iterates all window snapshots, calculates complete data for each, and saves the result array to `session('datos_lote')`. It then dispatches the `disparar-impresion-total` browser event. A hidden `<iframe>` listens for this event, sets its `src` to `route('plano.imprimir')`, and calls `contentWindow.print()` once loaded.
+  </Step>
+</Steps>
+
+## Directory structure
+
+Key directories and files in the project:
+
+```
+app/
+└── Http/
+    └── Controllers/
+        └── Controller.php          # Abstract base controller (empty)
+
+resources/
+└── views/
+    ├── Ventana.blade.php           # Full-page layout for window module
+    ├── Puerta.blade.php            # Full-page layout for door module
+    ├── welcome.blade.php           # Home screen with module selector
+    ├── planos2d.blade.php          # Print view for windows
+    ├── planos2dPuerta.blade.php    # Print view for doors
+    └── components/
+        ├── ventanas/
+        │   ├── ⚡app.blade.php          # Window system selector (Volt)
+        │   └── ⚡sistema-nova.blade.php # Sistema Nova configurator (Volt)
+        └── puertas/
+            ├── ⚡app.blade.php          # Door type selector (Volt)
+            ├── ⚡normal.blade.php       # Classic door configurator (Volt)
+            ├── ⚡personalizable.blade.php # Custom door configurator (Volt)
+            ├── ⚡corrediza1hoja.blade.php  # Sliding 1-leaf configurator (Volt)
+            └── ⚡corrediza2hoja.blade.php  # Sliding 2-leaf configurator (Volt)
+
+routes/
+└── web.php                         # All application routes (closures only)
+
+public/
+└── datos.xlsx                      # Aluminum profile catalog
+
+vite.config.js                      # Vite + Tailwind build configuration
+composer.json                       # PHP dependencies
+```
+
+## Livewire Volt — single-file components
+
+MediPro uses **Livewire Volt**, the single-file component pattern introduced in Livewire 4. Instead of separating a PHP class file and a Blade template, both live in one `.blade.php` file.
+
+The `⚡` prefix in filenames is the Volt convention that signals a single-file component. Livewire discovers and registers these automatically.
+
+A Volt component has two sections separated by the closing `?>` tag:
+
+```php
+<?php
+// 1. PHP section — the component class defined as an anonymous class
+use Livewire\Component;
+
+new class extends Component {
+    public float $ancho = 205;
+
+    public function updated($propertyName)
+    {
+        // runs after any public property changes
+    }
+
+    public function getDivisionesInferioresProperty(): int
+    {
+        return $this->numCorredizas + $this->numFijos;
+    }
+};
+?>
+
+{{-- 2. Blade template section --}}
+<div>
+    <input wire:model.blur="ancho" type="number">
+    <p>Divisiones: {{ $this->divisionesInferiores }}</p>
+</div>
+```
+
+<Note>
+  Computed properties in Volt follow Laravel/Livewire's `getXxxProperty()` convention and are accessed as `$this->xxx` in PHP or `{{ $this->xxx }}` in Blade templates.
+</Note>
+
+## No database
+
+MediPro has no database tables and no Eloquent models. All runtime state is stored in:
+
+- **PHP session** — window/door snapshots, selected system type, print data
+- **Livewire public properties** — in-memory state for the current request/interaction cycle
+- **`public/datos.xlsx`** — the static aluminum profile catalog, read on component mount

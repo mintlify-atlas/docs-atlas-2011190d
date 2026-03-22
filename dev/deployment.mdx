@@ -1,0 +1,293 @@
+---
+title: "Deployment"
+description: "How to deploy MediPro to a production server"
+---
+
+This guide covers deploying MediPro to a Linux production server running Apache or Nginx.
+
+## Server requirements
+
+| Requirement | Minimum version / notes |
+|---|---|
+| PHP | 8.2+ with `pdo`, `mbstring`, `tokenizer`, `xml`, `ctype`, `json`, `bcmath`, `fileinfo` extensions |
+| Composer | 2.x |
+| Node.js | 18+ (required for `npm run build` and Puppeteer) |
+| npm | 9+ |
+| Web server | Apache 2.4+ or Nginx 1.18+ |
+| Database | SQLite, MySQL 8+, or PostgreSQL 14+ |
+
+<Warning>
+Set `APP_DEBUG=false` in production. Leaving debug mode enabled exposes stack traces, environment variables, and internal application details to anyone who triggers an error.
+</Warning>
+
+## Deployment steps
+
+<Steps>
+  <Step title="Clone the repository">
+    Clone the project to your server's web root or a dedicated application directory:
+
+    ```bash
+    git clone <repository-url> /var/www/medipro
+    ```
+  </Step>
+
+  <Step title="Install PHP dependencies">
+    Install production PHP dependencies only — development tools (Pint, Pail, Sail, PHPUnit) are excluded:
+
+    ```bash
+    composer install --no-dev --optimize-autoloader
+    ```
+  </Step>
+
+  <Step title="Configure environment variables">
+    Copy the example file and edit it for production:
+
+    ```bash
+    cp .env.example .env
+    ```
+
+    At minimum, update the following values:
+
+    ```ini
+    APP_NAME="MediPro"
+    APP_ENV=production
+    APP_DEBUG=false
+    APP_URL=https://your-domain.example.com
+
+    DB_CONNECTION=mysql
+    DB_HOST=127.0.0.1
+    DB_PORT=3306
+    DB_DATABASE=medipro
+    DB_USERNAME=medipro_user
+    DB_PASSWORD=strong-password-here
+    ```
+  </Step>
+
+  <Step title="Generate the application key">
+    ```bash
+    php artisan key:generate
+    ```
+
+    This writes a unique `APP_KEY` into your `.env` file. Sessions and encrypted values depend on this key — keep it secret and do not rotate it without planning a migration of existing sessions.
+  </Step>
+
+  <Step title="Run database migrations">
+    Apply all migrations to the production database. The `--force` flag is required when `APP_ENV=production`:
+
+    ```bash
+    php artisan migrate --force
+    ```
+  </Step>
+
+  <Step title="Build front-end assets">
+    Install Node dependencies and compile all CSS and JavaScript for production:
+
+    ```bash
+    npm install && npm run build
+    ```
+
+    Vite outputs compiled assets to the `public/build/` directory. The `resources/` source files are not served directly.
+  </Step>
+
+  <Step title="Set file permissions">
+    The web server process must be able to write to `storage/` and `bootstrap/cache/`:
+
+    ```bash
+    chown -R www-data:www-data storage bootstrap/cache
+    chmod -R 775 storage bootstrap/cache
+    ```
+
+    Replace `www-data` with the user your web server runs as (e.g., `nginx`, `apache`, or `caddy`).
+  </Step>
+
+  <Step title="Configure the web server">
+    Point the web server document root to the `public/` directory. See the [Nginx](#nginx-configuration) and [Apache](#apache-configuration) sections below for sample configurations.
+  </Step>
+
+  <Step title="Copy datos.xlsx to public/">
+    MediPro requires a `datos.xlsx` spreadsheet in the `public/` directory for aluminium profile name lookup. This file is not committed to the repository and must be placed manually:
+
+    ```bash
+    cp /path/to/datos.xlsx /var/www/medipro/public/datos.xlsx
+    ```
+
+    <Note>
+    `datos.xlsx` is not included in the repository (it is gitignored or otherwise not committed). You must obtain this file separately and place it in `public/` before the configurator can look up profile names. The application will fail to resolve profile data without it.
+    </Note>
+  </Step>
+</Steps>
+
+## Web server configuration
+
+### Nginx configuration
+
+A minimal Nginx server block for MediPro:
+
+```nginx
+server {
+    listen 80;
+    listen [::]:80;
+    server_name your-domain.example.com;
+
+    root /var/www/medipro/public;
+    index index.php;
+
+    add_header X-Frame-Options "SAMEORIGIN";
+    add_header X-Content-Type-Options "nosniff";
+
+    charset utf-8;
+
+    location / {
+        try_files $uri $uri/ /index.php?$query_string;
+    }
+
+    location = /favicon.ico { access_log off; log_not_found off; }
+    location = /robots.txt  { access_log off; log_not_found off; }
+
+    error_page 404 /index.php;
+
+    location ~ \.php$ {
+        fastcgi_pass unix:/var/run/php/php8.2-fpm.sock;
+        fastcgi_param SCRIPT_FILENAME $realpath_root$fastcgi_script_name;
+        include fastcgi_params;
+        fastcgi_hide_header X-Powered-By;
+    }
+
+    location ~ /\.(?!well-known).* {
+        deny all;
+    }
+}
+```
+
+For HTTPS, obtain a certificate (e.g., via Let's Encrypt / Certbot) and add a second server block redirecting port 80 to 443.
+
+### Apache configuration
+
+Enable `mod_rewrite` and create a virtual host pointing to `public/`:
+
+```apache
+<VirtualHost *:80>
+    ServerName your-domain.example.com
+    DocumentRoot /var/www/medipro/public
+
+    <Directory /var/www/medipro/public>
+        AllowOverride All
+        Require all granted
+    </Directory>
+
+    ErrorLog ${APACHE_LOG_DIR}/medipro-error.log
+    CustomLog ${APACHE_LOG_DIR}/medipro-access.log combined
+</VirtualHost>
+```
+
+Laravel ships with a `public/.htaccess` file that handles URL rewriting for Apache.
+
+## Production optimisations
+
+After deploying, run the Artisan cache commands to pre-compile configuration, routes, and views:
+
+```bash
+php artisan config:cache
+php artisan route:cache
+php artisan view:cache
+```
+
+<Note>
+Once `config:cache` has been run, changes to `.env` have no effect until you run `php artisan config:clear` or `config:cache` again. Always re-run `config:cache` after updating environment variables.
+</Note>
+
+## Storage link
+
+If your application writes user-uploaded files to `storage/app/public/` and serves them through the `public` disk, create the symbolic link:
+
+```bash
+php artisan storage:link
+```
+
+This creates `public/storage` → `storage/app/public`.
+
+## Queue worker
+
+MediPro uses the database queue driver (`QUEUE_CONNECTION=database`). Run a queue worker as a long-lived background process to process jobs:
+
+```bash
+php artisan queue:work
+```
+
+In production, manage the worker with a process supervisor such as Supervisor or systemd so that it restarts automatically on failure.
+
+A minimal Supervisor configuration:
+
+```ini
+[program:medipro-worker]
+process_name=%(program_name)s_%(process_num)02d
+command=php /var/www/medipro/artisan queue:work --sleep=3 --tries=3 --max-time=3600
+autostart=true
+autorestart=true
+stopasgroup=true
+killasgroup=true
+user=www-data
+numprocs=1
+redirect_stderr=true
+stdout_logfile=/var/log/medipro-worker.log
+stopwaitsecs=3630
+```
+
+Restart workers after every deployment so they pick up code changes:
+
+```bash
+php artisan queue:restart
+```
+
+## PDF generation (Browsershot)
+
+MediPro uses `spatie/browsershot` for PDF generation. Browsershot requires Node.js and Puppeteer to be installed on the server:
+
+```bash
+npm install --global puppeteer
+```
+
+or install it locally within the project:
+
+```bash
+npm install puppeteer
+```
+
+Puppeteer downloads a bundled Chromium binary on first install. On headless Linux servers you may also need to install Chromium's system dependencies:
+
+```bash
+# Debian / Ubuntu
+apt-get install -y \
+  libnss3 libatk1.0-0 libatk-bridge2.0-0 libcups2 \
+  libdrm2 libxkbcommon0 libxcomposite1 libxdamage1 \
+  libxfixes3 libxrandr2 libgbm1 libasound2
+```
+
+## Deployment checklist
+
+<AccordionGroup>
+  <Accordion title="Environment">
+    - [ ] `APP_ENV=production`
+    - [ ] `APP_DEBUG=false`
+    - [ ] `APP_KEY` is set and non-empty
+    - [ ] `APP_URL` matches the public domain
+    - [ ] Database credentials are correct
+  </Accordion>
+  <Accordion title="Files and permissions">
+    - [ ] `storage/` is writable by the web server user
+    - [ ] `bootstrap/cache/` is writable by the web server user
+    - [ ] `public/datos.xlsx` is present
+    - [ ] `npm run build` has been run and `public/build/` exists
+  </Accordion>
+  <Accordion title="Artisan commands run">
+    - [ ] `php artisan migrate --force`
+    - [ ] `php artisan config:cache`
+    - [ ] `php artisan route:cache`
+    - [ ] `php artisan view:cache`
+    - [ ] `php artisan storage:link` (if using public disk)
+  </Accordion>
+  <Accordion title="Background processes">
+    - [ ] Queue worker is running and supervised
+    - [ ] `php artisan queue:restart` was run after the latest deployment
+  </Accordion>
+</AccordionGroup>

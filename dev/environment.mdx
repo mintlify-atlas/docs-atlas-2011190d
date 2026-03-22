@@ -1,0 +1,305 @@
+---
+title: "Environment Configuration"
+description: "Configure your environment variables and local development setup"
+---
+
+MediPro uses a standard Laravel `.env` file to manage all environment configuration. This page documents every variable, how to get your local environment running, and how to run tests.
+
+## Prerequisites
+
+Before starting, ensure you have the following installed:
+
+| Requirement | Minimum version |
+|-------------|----------------|
+| PHP | 8.2+ |
+| Composer | 2.x |
+| Node.js | 18+ |
+| npm | 9+ |
+
+## Quick setup
+
+The `composer setup` script handles the full initial setup in one command:
+
+```bash
+composer setup
+```
+
+This script runs the following steps in sequence:
+
+1. `composer install` — installs PHP dependencies
+2. Copies `.env.example` to `.env` if no `.env` file exists
+3. `php artisan key:generate` — generates `APP_KEY`
+4. `php artisan migrate --force` — runs all database migrations
+5. `npm install` — installs Node dependencies
+6. `npm run build` — compiles front-end assets
+
+<Warning>
+Never run `composer setup` in production. It is intended for local development only. Production deployments require a separate, carefully controlled process — see the [Deployment](/dev/deployment) guide.
+</Warning>
+
+## Running the development server
+
+Once set up, start all development services with:
+
+```bash
+composer dev
+```
+
+This uses `npx concurrently` to run four processes simultaneously:
+
+```bash
+npx concurrently \
+  -c "#93c5fd,#c4b5fd,#fb7185,#fdba74" \
+  "php artisan serve" \
+  "php artisan queue:listen --tries=1" \
+  "php artisan pail --timeout=0" \
+  "npm run dev" \
+  --names=server,queue,logs,vite \
+  --kill-others
+```
+
+| Process name | Command | Purpose |
+|---|---|---|
+| `server` | `php artisan serve` | PHP built-in web server on port 8000 |
+| `queue` | `php artisan queue:listen --tries=1` | Processes queued jobs in real time |
+| `logs` | `php artisan pail --timeout=0` | Streams application logs to the terminal |
+| `vite` | `npm run dev` | Vite HMR dev server for CSS/JS assets |
+
+All four processes are colour-coded in the terminal output. If any one process exits, `--kill-others` shuts down the rest.
+
+## The `.env` file
+
+Copy `.env.example` to `.env` and fill in values for your environment:
+
+```bash
+cp .env.example .env
+php artisan key:generate
+```
+
+The full contents of `.env.example` are shown below for reference:
+
+```ini
+APP_NAME=Laravel
+APP_ENV=local
+APP_KEY=
+APP_DEBUG=true
+APP_URL=http://localhost
+
+APP_LOCALE=en
+APP_FALLBACK_LOCALE=en
+APP_FAKER_LOCALE=en_US
+
+APP_MAINTENANCE_DRIVER=file
+# APP_MAINTENANCE_STORE=database
+
+# PHP_CLI_SERVER_WORKERS=4
+
+BCRYPT_ROUNDS=12
+
+LOG_CHANNEL=stack
+LOG_STACK=single
+LOG_DEPRECATIONS_CHANNEL=null
+LOG_LEVEL=debug
+
+DB_CONNECTION=sqlite
+# DB_HOST=127.0.0.1
+# DB_PORT=3306
+# DB_DATABASE=laravel
+# DB_USERNAME=root
+# DB_PASSWORD=
+
+SESSION_DRIVER=database
+SESSION_LIFETIME=120
+SESSION_ENCRYPT=false
+SESSION_PATH=/
+SESSION_DOMAIN=null
+
+BROADCAST_CONNECTION=log
+FILESYSTEM_DISK=local
+QUEUE_CONNECTION=database
+
+CACHE_STORE=database
+# CACHE_PREFIX=
+
+MEMCACHED_HOST=127.0.0.1
+
+REDIS_CLIENT=phpredis
+REDIS_HOST=127.0.0.1
+REDIS_PASSWORD=null
+REDIS_PORT=6379
+
+MAIL_MAILER=log
+MAIL_SCHEME=null
+MAIL_HOST=127.0.0.1
+MAIL_PORT=2525
+MAIL_USERNAME=null
+MAIL_PASSWORD=null
+MAIL_FROM_ADDRESS="hello@example.com"
+MAIL_FROM_NAME="${APP_NAME}"
+
+AWS_ACCESS_KEY_ID=
+AWS_SECRET_ACCESS_KEY=
+AWS_DEFAULT_REGION=us-east-1
+AWS_BUCKET=
+AWS_USE_PATH_STYLE_ENDPOINT=false
+
+VITE_APP_NAME="${APP_NAME}"
+```
+
+## Environment variable reference
+
+### App
+
+| Variable | Default | Description |
+|---|---|---|
+| `APP_NAME` | `Laravel` | Application name. Used in UI and email templates via `APP_NAME`. |
+| `APP_ENV` | `local` | Current environment. Use `local`, `staging`, or `production`. |
+| `APP_KEY` | _(empty)_ | 32-character encryption key. **Must be generated before first run.** |
+| `APP_DEBUG` | `true` | Shows detailed error pages when `true`. Set to `false` in production. |
+| `APP_URL` | `http://localhost` | Canonical base URL. Used for generating absolute links. |
+| `APP_LOCALE` | `en` | Default locale for translations. |
+| `APP_FALLBACK_LOCALE` | `en` | Locale to fall back to if a translation key is missing. |
+| `APP_FAKER_LOCALE` | `en_US` | Locale used by Faker when generating fake data in tests and seeders. |
+| `APP_MAINTENANCE_DRIVER` | `file` | How maintenance mode state is stored. `file` or `database`. |
+| `BCRYPT_ROUNDS` | `12` | Cost factor for password hashing. Lower values speed up tests. |
+
+<Warning>
+Always run `php artisan key:generate` after copying `.env.example`. Laravel will refuse to serve requests if `APP_KEY` is empty.
+</Warning>
+
+### Logging
+
+| Variable | Default | Description |
+|---|---|---|
+| `LOG_CHANNEL` | `stack` | Default log channel. `stack` aggregates multiple channels. |
+| `LOG_STACK` | `single` | Channels included in the `stack` channel. |
+| `LOG_DEPRECATIONS_CHANNEL` | `null` | Channel for PHP/framework deprecation notices. |
+| `LOG_LEVEL` | `debug` | Minimum severity to log. Options: `debug`, `info`, `warning`, `error`, `critical`. |
+
+### Database
+
+| Variable | Default | Description |
+|---|---|---|
+| `DB_CONNECTION` | `sqlite` | Database driver. Options: `sqlite`, `mysql`, `pgsql`. |
+| `DB_HOST` | `127.0.0.1` | Database server hostname (MySQL/PostgreSQL only). |
+| `DB_PORT` | `3306` | Database server port (MySQL/PostgreSQL only). |
+| `DB_DATABASE` | `laravel` | Database name (or SQLite file path). |
+| `DB_USERNAME` | `root` | Database username (MySQL/PostgreSQL only). |
+| `DB_PASSWORD` | _(empty)_ | Database password (MySQL/PostgreSQL only). |
+
+<Tip>
+For local development, leave `DB_CONNECTION=sqlite`. Laravel will automatically use `database/database.sqlite`, which requires no database server. Run `touch database/database.sqlite` if the file does not exist yet.
+</Tip>
+
+### Session
+
+| Variable | Default | Description |
+|---|---|---|
+| `SESSION_DRIVER` | `database` | Where sessions are stored. Options: `database`, `file`, `cookie`, `redis`. |
+| `SESSION_LIFETIME` | `120` | Minutes before an idle session expires. |
+| `SESSION_ENCRYPT` | `false` | Encrypt session payload at rest when `true`. |
+| `SESSION_PATH` | `/` | Cookie path scope. |
+| `SESSION_DOMAIN` | `null` | Cookie domain scope. `null` uses the current domain. |
+
+### Broadcasting, filesystem, and queue
+
+| Variable | Default | Description |
+|---|---|---|
+| `BROADCAST_CONNECTION` | `log` | Broadcast driver. `log` writes events to the log instead of broadcasting. |
+| `FILESYSTEM_DISK` | `local` | Default storage disk. |
+| `QUEUE_CONNECTION` | `database` | Queue driver. `database` uses the `jobs` table. |
+
+### Cache
+
+| Variable | Default | Description |
+|---|---|---|
+| `CACHE_STORE` | `database` | Cache backend. Options: `database`, `file`, `redis`, `array`. |
+| `CACHE_PREFIX` | _(empty)_ | Optional string prepended to all cache keys to avoid collisions. |
+| `MEMCACHED_HOST` | `127.0.0.1` | Memcached server host (only used when `CACHE_STORE=memcached`). |
+
+### Redis
+
+| Variable | Default | Description |
+|---|---|---|
+| `REDIS_CLIENT` | `phpredis` | PHP Redis extension to use. `phpredis` or `predis`. |
+| `REDIS_HOST` | `127.0.0.1` | Redis server hostname. |
+| `REDIS_PASSWORD` | `null` | Redis authentication password. |
+| `REDIS_PORT` | `6379` | Redis server port. |
+
+### Mail
+
+| Variable | Default | Description |
+|---|---|---|
+| `MAIL_MAILER` | `log` | Mail driver. `log` writes emails to the log — no real emails are sent. |
+| `MAIL_SCHEME` | `null` | Transport encryption scheme (`tls`, `ssl`, or `null`). |
+| `MAIL_HOST` | `127.0.0.1` | SMTP server hostname. |
+| `MAIL_PORT` | `2525` | SMTP server port. |
+| `MAIL_USERNAME` | `null` | SMTP authentication username. |
+| `MAIL_PASSWORD` | `null` | SMTP authentication password. |
+| `MAIL_FROM_ADDRESS` | `hello@example.com` | Default sender address. |
+| `MAIL_FROM_NAME` | `${APP_NAME}` | Default sender display name. |
+
+### AWS / S3
+
+| Variable | Default | Description |
+|---|---|---|
+| `AWS_ACCESS_KEY_ID` | _(empty)_ | AWS IAM access key ID. |
+| `AWS_SECRET_ACCESS_KEY` | _(empty)_ | AWS IAM secret access key. |
+| `AWS_DEFAULT_REGION` | `us-east-1` | AWS region for S3 and other services. |
+| `AWS_BUCKET` | _(empty)_ | S3 bucket name for the `s3` filesystem disk. |
+| `AWS_USE_PATH_STYLE_ENDPOINT` | `false` | Use path-style S3 URLs (required for MinIO and some S3-compatible stores). |
+
+### Vite
+
+| Variable | Default | Description |
+|---|---|---|
+| `VITE_APP_NAME` | `${APP_NAME}` | Exposes the application name to front-end JavaScript. |
+
+## Running tests
+
+Run the full test suite with:
+
+```bash
+composer test
+```
+
+This runs:
+
+```bash
+php artisan config:clear && php artisan test
+```
+
+The config cache is cleared first to prevent stale values from affecting test results.
+
+### PHPUnit configuration
+
+Test environment overrides are defined in `phpunit.xml`. The test suite uses in-memory SQLite so no database setup is needed:
+
+```xml
+<php>
+    <env name="APP_ENV" value="testing"/>
+    <env name="APP_MAINTENANCE_DRIVER" value="file"/>
+    <env name="BCRYPT_ROUNDS" value="4"/>
+    <env name="BROADCAST_CONNECTION" value="null"/>
+    <env name="CACHE_STORE" value="array"/>
+    <env name="DB_CONNECTION" value="sqlite"/>
+    <env name="DB_DATABASE" value=":memory:"/>
+    <env name="MAIL_MAILER" value="array"/>
+    <env name="QUEUE_CONNECTION" value="sync"/>
+    <env name="SESSION_DRIVER" value="array"/>
+</php>
+```
+
+There are two test suites:
+
+| Suite | Directory | Purpose |
+|---|---|---|
+| `Unit` | `tests/Unit` | Isolated unit tests with no framework boot |
+| `Feature` | `tests/Feature` | Full HTTP/feature tests against a booted application |
+
+To run a single suite:
+
+```bash
+php artisan test --testsuite=Unit
+php artisan test --testsuite=Feature
+```
