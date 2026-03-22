@@ -1,0 +1,106 @@
+{
+  "projectType": "saas",
+  "projectName": "MediPro",
+  "projectDescription": "A Laravel + Livewire web application for configuring, quoting, and generating technical 2D plans for aluminum windows and doors with automatic dimension calculations.",
+  "theme": "almond",
+  "primaryColor": "#040404",
+  "lightColor": "#ef370f",
+  "darkColor": "#f79d72",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": ["introduction", "quickstart", "installation"]
+          },
+          {
+            "group": "Core Features",
+            "pages": [
+              "features/windows",
+              "features/doors",
+              "features/technical-plans",
+              "features/pdf-export"
+            ]
+          },
+          {
+            "group": "Window Systems",
+            "pages": [
+              "systems/windows/sistema-nova",
+              "systems/windows/persiana",
+              "systems/windows/doble-corrediza",
+              "systems/windows/batiente",
+              "systems/windows/proyectante"
+            ]
+          },
+          {
+            "group": "Door Systems",
+            "pages": [
+              "systems/doors/clasica",
+              "systems/doors/personalizable",
+              "systems/doors/corrediza-1hoja",
+              "systems/doors/corrediza-2hojas",
+              "systems/doors/2hojas"
+            ]
+          },
+          {
+            "group": "Configuration",
+            "pages": [
+              "configuration/dimensions",
+              "configuration/profiles",
+              "configuration/accessories"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Developer Guide",
+        "groups": [
+          {
+            "group": "Architecture",
+            "pages": [
+              "dev/architecture",
+              "dev/livewire-components",
+              "dev/routes"
+            ]
+          },
+          {
+            "group": "Setup & Deployment",
+            "pages": [
+              "dev/environment",
+              "dev/database",
+              "dev/deployment"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Dynamic aluminum window and door configuration with real-time 2D technical plan generation",
+    "Support for multiple window systems: Sistema Nova, Persiana, Doble Corrediza, Batiente, Proyectante",
+    "Support for multiple door types: Clásica, Personalizable, Corrediza 1/2 hoja, 2 hojas",
+    "Automatic dimension calculations for adjusted widths, bridge heights, and glass measurements",
+    "Multi-window batch management with add, switch, and delete capabilities",
+    "Detailed fabrication summary with aluminum profile codes and quantities",
+    "PDF export of technical plans and fabrication summaries",
+    "Accessories calculation (garruchas, pestillos, topes) based on configuration",
+    "Excel-based profile catalog integration for product name lookups",
+    "Session-based state persistence for multi-item workflows"
+  ],
+  "publicApiSurface": [
+    "GET / — Welcome/home screen with module selector",
+    "GET /Ventana — Window configuration module (Livewire: ventanas.app)",
+    "GET /Puerta — Door configuration module (Livewire: puertas.app)",
+    "GET /plano-imprimir — Printable 2D technical plans for windows (route: plano.imprimir)",
+    "GET /puertas-imprimir — Printable 2D technical plans for doors (route: puertas.imprimir)",
+    "Livewire: ventanas.app — Window system selector component",
+    "Livewire: ventanas.sistema-nova — Sistema Nova full configurator with dimension logic",
+    "Livewire: puertas.app — Door system selector component",
+    "Livewire: puertas.normal — Classic door configurator",
+    "Livewire: puertas.personalizable — Customizable door configurator",
+    "Livewire: puertas.corrediza1hoja — Single-leaf sliding door configurator",
+    "Livewire: puertas.corrediza2hoja — Double-leaf sliding door configurator"
+  ]
+}
